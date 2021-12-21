@@ -5,13 +5,23 @@ use std::{
     result,
 };
 
+/// An error which can be returned
+/// when taking numerical input from a buffer.
+/// 
+/// This error is used as the error type
+/// used for numerical input handling interfaces,
+/// in the [`my_rusttools::input`] module.
+/// 
+/// [`my_rusttools::input`]: super::super
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InputInvalidError {
-    pub(super) kind: InputErrorKind
+pub struct NumInputError {
+    pub(super) kind: NumInputErrorKind
 }
 
+/// An enum to indicate the various types of errors
+/// that can invalidate numerical input.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum InputErrorKind {
+pub enum NumInputErrorKind {
     /// Value parsed falls outside the valid range,
     /// specified in the function parameter call.
     OutsideValidRange,
@@ -41,49 +51,49 @@ pub enum InputErrorKind {
     Zero,
 }
 
-/// Outputs the detailed cause of why the buffer input was invalidated.
-impl InputInvalidError {
-    pub fn kind(&self) -> &InputErrorKind {
+impl NumInputError {
+    /// Outputs the detailed cause of why the input was invalidated.
+    pub fn kind(&self) -> &NumInputErrorKind {
         &self.kind
     }
         
 }
         
-impl fmt::Display for InputInvalidError {
+impl fmt::Display for NumInputError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
-            InputErrorKind::OutsideValidRange => "parsed input invalidated, not found within included range",
-            InputErrorKind::InInvalidRange => "parsed input invalidated, found within excluded range",
-            InputErrorKind::Empty => "cannot parse numerical value from empty string",
-            InputErrorKind::InvalidDigit => "invalid digit found in string",
-            InputErrorKind::PosOverflow => "number too large to fit in target type",
-            InputErrorKind::NegOverflow => "number too small to fit in target type",
-            InputErrorKind::Zero => "number would be zero for non-zero type",
+            NumInputErrorKind::OutsideValidRange => "parsed input invalidated, not found within included range",
+            NumInputErrorKind::InInvalidRange => "parsed input invalidated, found within excluded range",
+            NumInputErrorKind::Empty => "cannot parse numerical value from empty string",
+            NumInputErrorKind::InvalidDigit => "invalid digit found in string",
+            NumInputErrorKind::PosOverflow => "number too large to fit in target type",
+            NumInputErrorKind::NegOverflow => "number too small to fit in target type",
+            NumInputErrorKind::Zero => "number would be zero for non-zero type",
         }.fmt(f)
     }
 }
 
-impl From<ParseIntError> for InputInvalidError {
-    fn from(err: ParseIntError) -> InputInvalidError {
+impl From<ParseIntError> for NumInputError {
+    fn from(err: ParseIntError) -> NumInputError {
         Self { 
             kind: match err.kind() {
-                IntErrorKind::Empty => InputErrorKind::Empty,
-                IntErrorKind::InvalidDigit => InputErrorKind::InvalidDigit,
-                IntErrorKind::PosOverflow => InputErrorKind::PosOverflow,
-                IntErrorKind::NegOverflow => InputErrorKind::NegOverflow,
-                IntErrorKind::Zero => InputErrorKind::Zero,
+                IntErrorKind::Empty => NumInputErrorKind::Empty,
+                IntErrorKind::InvalidDigit => NumInputErrorKind::InvalidDigit,
+                IntErrorKind::PosOverflow => NumInputErrorKind::PosOverflow,
+                IntErrorKind::NegOverflow => NumInputErrorKind::NegOverflow,
+                IntErrorKind::Zero => NumInputErrorKind::Zero,
                 &_ => panic!("unaccounted for error: {}", err),
             }
         }
     }
 }
 
-impl From<ParseFloatError> for InputInvalidError {
-    fn from(err: ParseFloatError) -> InputInvalidError {
+impl From<ParseFloatError> for NumInputError {
+    fn from(err: ParseFloatError) -> NumInputError {
         Self {
             kind: match err.to_string().as_str() {
-                "cannot parse float from empty string" => InputErrorKind::Empty,
-                "invalid float literal" => InputErrorKind::InvalidDigit,
+                "cannot parse float from empty string" => NumInputErrorKind::Empty,
+                "invalid float literal" => NumInputErrorKind::InvalidDigit,
                 &_ => panic!("unaccounted for error: {}", err),
             }
         }
@@ -92,4 +102,4 @@ impl From<ParseFloatError> for InputInvalidError {
 
 /// A custom shaddowing of `std::result::Result`, 
 /// enforcing the error type of return values.
-pub type Result<T> = result::Result<T, InputInvalidError>;
+pub type Result<T> = result::Result<T, NumInputError>;

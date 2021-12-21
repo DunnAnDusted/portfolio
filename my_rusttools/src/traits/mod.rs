@@ -1,5 +1,4 @@
-//! A temporary library crate, 
-//! for testing the a collection of future traits of my main library.
+//! General tool traits.
 mod summarise_collection;
 mod humanize_bool;
 

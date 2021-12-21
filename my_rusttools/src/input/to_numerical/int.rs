@@ -8,17 +8,62 @@ use super::super::{
     to_numerical::error::*,
 };
 
-pub trait TakeintInput<T, U, F, E>
+/// An interface for handling integer input.
+/// 
+/// # Notifications
+/// 
+/// Due to the variety of context these functions may be used in,
+/// functions enforcing repeating behaviour,
+/// such as those that loop until a valid integer is parsed,
+/// provide an arguments for closures to specify notification behaviours for these loops.
+pub trait TakeIntInput<T>
 where
     T: Copy,
     T: PartialOrd,
-    T: FromStr<Err = ParseIntError>,
-    U: RangeBounds<T>,
-    F: FnMut(), 
-    E: FnMut(InputInvalidError), {
+    T: FromStr<Err = ParseIntError>, {
+        /// Takes input from the specified buffer,
+        /// attempting to parse it as an integer value.
+        /// 
+        /// # Examples
+        /// ```
+        /// use std::io;
+        /// use my_rusttools::input::TakeIntInput;
+        /// 
+        /// println!("Please enter a number:");
+        /// 
+        /// match io::stdin().take_int() {
+        ///     Ok(num) => println!("entered numer: {}", num),
+        ///     Err(err) => println!("error: {}", err),
+        /// }
+        /// ```
         fn take_int(&self) -> Result<T>;
 
-        fn take_int_until_parsed(&self, mut notif: F, mut err_notif: E) -> T {
+        /// Takes input from a specified buffer,
+        /// attempting to parse it as an integer,
+        /// repeatedly until a valid value is parsed.
+        /// 
+        /// # Notifications
+        /// 
+        /// `notif` allows for a process that will be executed
+        /// on each repetition of the loop in the function,
+        /// to allow feedback to the user, for example.
+        /// 
+        /// `err_notif` is similar, but specifies how to handle input errors.
+        /// 
+        /// # Examples
+        /// ```
+        /// use std::io;
+        /// use my_rusttools::input::TakeIntInput;
+        /// 
+        /// let num: usize = io::stdin()
+        ///     .take_int_until_parsed(||println!("Please enter a positive number:"), |err|println!("invalid input: {}", err));
+        /// 
+        /// assert!(num >= 0);
+        /// ```
+        fn take_int_until_parsed<F, E>(&self, mut notif: F, mut err_notif: E) -> T 
+        where
+            F: FnMut(), 
+            E: FnMut(NumInputError), {
                 loop {
                     notif();
             
@@ -31,54 +76,131 @@ where
                 }
             }
 
-        fn take_int_include_range(&self, range: &U) -> Result<T>{
+        /// Takes an integer input,
+        /// validating it falls within the specified range.
+        /// 
+        /// # Examples
+        /// ```
+        /// use std::io;
+        /// use my_rusttools::input::TakeIntInput;
+        /// 
+        /// println!("Please enter a number from 0 to 100:");
+        /// 
+        /// match io::stdin().take_int_include_range(&(0..=100)) {
+        ///     Ok(num) => println!("entered numer: {}", num),
+        ///     Err(err) => println!("error: {}", err),
+        /// }
+        /// ```
+        fn take_int_include_range<U: RangeBounds<T>>(&self, range: &U) -> Result<T>{
             Err(match self.take_int() {
                 Ok(int) if range.contains(&int) => return Ok(int),
-                Ok(_) => InputInvalidError{kind: InputErrorKind::OutsideValidRange},
+                Ok(_) => NumInputError{kind: NumInputErrorKind::OutsideValidRange},
                 Err(err) => err,
             })
         }
 
-        fn take_int_exclude_range(&self, range: &U) -> Result<T> {
+        /// Takes an integer input,
+        /// validating it falls outside the specified range.
+        /// 
+        /// # Examples
+        /// ```
+        /// use std::io;
+        /// use my_rusttools::input::TakeIntInput;
+        /// 
+        /// println!("Please enter a number greater than 10:");
+        /// 
+        /// match io::stdin().take_int_exclude_range(&(..=10)) {
+        ///     Ok(num) => println!("entered numer: {}", num),
+        ///     Err(err) => println!("error: {}", err),
+        /// }
+        /// ```
+        fn take_int_exclude_range<U: RangeBounds<T>>(&self, range: &U) -> Result<T> {
             Err(match self.take_int() {
-                Ok(int) if range.contains(&int) => InputInvalidError{kind: InputErrorKind::InInvalidRange},
+                Ok(int) if range.contains(&int) => NumInputError{kind: NumInputErrorKind::InInvalidRange},
                 Ok(int) => return Ok(int),
                 Err(err) => err,
             })
         }
 
-        fn take_int_include_range_until_valid(&self, range: &U, mut notif: F, mut err_notif: E) -> T {
-            loop {
-                notif();
-                
-                match self.take_int_include_range(range) {
-                    Ok(int) => break int,
-                    Err(err) => err_notif(err),
+        /// Takes an integer input,
+        /// until a valid value is parsed,
+        /// and falls within the specified range.
+        /// 
+        /// # Notifications
+        /// 
+        /// `notif` allows for a process that will be executed
+        /// on each repetition of the loop in the function,
+        /// to allow feedback to the user, for example.
+        /// 
+        /// `err_notif` is similar, but specifies how to handle input errors.
+        /// 
+        /// # Examples
+        /// ```
+        /// use std::io;
+        /// use my_rusttools::input::TakeIntInput;
+        /// 
+        /// let num: usize = io::stdin()
+        ///     .take_int_include_range_until_valid(&(..=100), ||println!("Please enter a positive number up to 100:"), |err|println!("invalid input: {}", err));
+        /// 
+        /// assert!(num <= 100);
+        /// ```
+        fn take_int_include_range_until_valid<U: RangeBounds<T>, F, E>(&self, range: &U, mut notif: F, mut err_notif: E) -> T 
+        where
+            F: FnMut(), 
+            E: FnMut(NumInputError), {
+                loop {
+                    notif();
+                    
+                    match self.take_int_include_range(range) {
+                        Ok(int) => break int,
+                        Err(err) => err_notif(err),
+                    }
                 }
             }
-        }
 
-        fn take_int_exclude_range_until_valid(&self, range: &U, mut notif: F, mut err_notif: E) -> T {
-            loop {
-                notif();
-                
-                match self.take_int_exclude_range(range) {
-                    Ok(int) => break int,
-                    Err(err) => err_notif(err),
+        /// Takes an integer input,
+        /// until a valid value is parsed,
+        /// and falls outside the specified range.
+        /// 
+        /// # Notifications
+        /// 
+        /// `notif` allows for a process that will be executed
+        /// on each repetition of the loop in the function,
+        /// to allow feedback to the user, for example.
+        /// 
+        /// `err_notif` is similar, but specifies how to handle input errors.
+        /// 
+        /// # Examples
+        /// ```
+        /// use std::io;
+        /// use my_rusttools::input::TakeIntInput;
+        /// 
+        /// let num: usize = io::stdin()
+        ///     .take_int_exclude_range_until_valid(&(..=10), ||println!("Please enter a number greater than 10:"), |err|println!("invalid input: {}", err));
+        /// 
+        /// assert!(num > 10);
+        /// ```
+        fn take_int_exclude_range_until_valid<U: RangeBounds<T>, F, E>(&self, range: &U, mut notif: F, mut err_notif: E) -> T 
+        where
+            F: FnMut(), 
+            E: FnMut(NumInputError), {
+                loop {
+                    notif();
+                    
+                    match self.take_int_exclude_range(range) {
+                        Ok(int) => break int,
+                        Err(err) => err_notif(err),
+                    }
                 }
             }
-        }
     }
 
-impl<T, U, F, E, V> TakeintInput<T, U, F, E> for V
+impl<T, U> TakeIntInput<T> for U
 where
-    V: basic_input::TakeBasicInput,
+    U: basic_input::TakeBasicInput,
     T: Copy,
     T: PartialOrd,
-    T: FromStr<Err = ParseIntError>,
-    U: RangeBounds<T>,
-    F: FnMut(), 
-    E: FnMut(InputInvalidError), {
+    T: FromStr<Err = ParseIntError>, {
         fn take_int(&self) -> Result<T> {
             Ok(self.take_string_input()
                 .trim()
