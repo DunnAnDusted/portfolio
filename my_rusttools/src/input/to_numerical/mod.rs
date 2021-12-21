@@ -1,4 +1,5 @@
-//! A temporary recreation of the input handling module of my main library.
+//! Interfaces and implementations
+//! for handling numerical input.
 mod int;
 mod float;
 mod error;
