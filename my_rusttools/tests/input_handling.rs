@@ -1,3 +1,4 @@
+#![allow(unused_comparisons)]
 use my_rusttools::input::*;
 use std::io;
 
