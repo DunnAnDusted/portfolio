@@ -2,5 +2,6 @@
 
 members = [
     "my_rusttools",
-    "christopher"
+    "christopher",
+    "cli_commands"
 ]
