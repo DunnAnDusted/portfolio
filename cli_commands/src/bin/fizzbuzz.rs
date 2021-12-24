@@ -5,25 +5,23 @@ use std::{
 };
 
 fn main() {
-    let iterations: usize = match env::args()
+    let iterations: usize = env::args()
         .skip(1)
-        .collect::<String>()
+        .collect::<String>() // Takes the command arguments following the binary path, and collects it as a String.
         .trim()
-        .parse() {
-            Ok(num) => num,
-            Err(err) => {
-                eprintln!("usage: fizzbuzz <Num: Whole number>\n{}", err);
-                process::exit(1);
-            }
-        };
+        .parse() // Trims the string, and attempts to parse it as a `usize`.
+        .unwrap_or_else(|err|{
+            eprintln!("usage: fizzbuzz <Num: Whole number>\n\narguments cannot be parsed: {}", err);
+            process::exit(1); // Prints usage and error, then exits the process, if the value can't be parsed.
+        });
 
-    println!("{}", fizzbuzz(iterations));
+    println!("{}", fizzbuzz(iterations)); // Runs the fizzbuzz process, then prints the result.
 }
 
 fn fizzbuzz(iterations: usize) -> String {
     let mut ret = String::new();
 
-    for i in 1..iterations {
+    for i in 1..=iterations {
         let mut push = String::new();
 
         if i%3 == 0 {
@@ -37,7 +35,7 @@ fn fizzbuzz(iterations: usize) -> String {
         }
 
         if let Err(_) = write!(ret, "{}\n", push) {
-            break;
+            break; // Attempts to buffer append the iteration string, to the return string, and breaks the loop so the process will return early if there's an issue.
         }
     }
 
