@@ -118,6 +118,6 @@ mod tests {
 
     #[test]
     fn parsing_test() {
-        regex::Regex::new("\\A\\z").unwrap();
+        regex::Regex::new("").unwrap();
     }
 }
