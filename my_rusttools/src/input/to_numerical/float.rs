@@ -91,12 +91,13 @@ where
         ///     Err(err) => println!("error: {}", err),
         /// }
         /// ```
-        fn take_float_include_range<U: RangeBounds<T>>(&self, range: &U) -> Result<T>{
-            Err(match self.take_float() {
-                Ok(float) if range.contains(&float) => return Ok(float),
-                Ok(_) => NumInputError{kind: NumInputErrorKind::OutsideValidRange},
-                Err(err) => err,
-            })
+        fn take_float_include_range<U: RangeBounds<T>>(&self, range: &U) -> Result<T> {
+            self.take_float()
+                .and_then(|x|if range.contains(&x) {
+                    Ok(x)
+                } else {
+                    Err(NumInputError{kind: NumInputErrorKind::OutsideValidRange})
+                })
         }
 
         /// Takes an floating point input,
@@ -115,11 +116,12 @@ where
         /// }
         /// ```
         fn take_float_exclude_range<U: RangeBounds<T>>(&self, range: &U) -> Result<T> {
-            Err(match self.take_float() {
-                Ok(float) if range.contains(&float) => NumInputError{kind: NumInputErrorKind::InInvalidRange},
-                Ok(float) => return Ok(float),
-                Err(err) => err,
-            })
+            self.take_float()
+                .and_then(|x|if range.contains(&x) {
+                    Err(NumInputError{kind: NumInputErrorKind::InInvalidRange},)
+                } else {
+                    Ok(x)
+                })
         }
 
         /// Takes an floating point input,
