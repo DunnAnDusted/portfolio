@@ -92,11 +92,12 @@ where
         /// }
         /// ```
         fn take_int_include_range<U: RangeBounds<T>>(&self, range: &U) -> Result<T>{
-            Err(match self.take_int() {
-                Ok(int) if range.contains(&int) => return Ok(int),
-                Ok(_) => NumInputError{kind: NumInputErrorKind::OutsideValidRange},
-                Err(err) => err,
-            })
+            self.take_int()
+                .and_then(|x|if range.contains(&x) {
+                    Ok(x)
+                } else {
+                    Err(NumInputError{kind: NumInputErrorKind::OutsideValidRange},)
+                })
         }
 
         /// Takes an integer input,
@@ -115,11 +116,12 @@ where
         /// }
         /// ```
         fn take_int_exclude_range<U: RangeBounds<T>>(&self, range: &U) -> Result<T> {
-            Err(match self.take_int() {
-                Ok(int) if range.contains(&int) => NumInputError{kind: NumInputErrorKind::InInvalidRange},
-                Ok(int) => return Ok(int),
-                Err(err) => err,
-            })
+            self.take_int()
+                .and_then(|x|if range.contains(&x) {
+                    Err(NumInputError{kind: NumInputErrorKind::InInvalidRange})
+                } else {
+                    Ok(x)
+                })
         }
 
         /// Takes an integer input,
