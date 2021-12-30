@@ -1,3 +1,4 @@
+//! Custom input handling tools.
 use std::{
     io,
     ops::{Bound::*, RangeBounds},
@@ -40,11 +41,11 @@ pub trait TakeInputBasic<T> {
     ///         Ok(false)
     ///     } else {
     ///         Err("input must be \"y(es)\" or \"n(o)\"")
-    ///     })
+    ///     }
     /// }) {
     ///     Ok(case) => println!("User's input was: {}", case),
     ///     Err(err) => eprintln!("invalid input: {}", err),
-    /// };
+    /// }
     /// ```
     fn take_input_then_map<F>(&self, f: F) -> T
     where
@@ -75,10 +76,12 @@ pub trait TakeInputBasic<T> {
     /// use my_rusttools::input::TakeInputBasic;
     /// 
     /// let uinp: usize = io::stdin()
-    ///     .take_string_input_until_mapped(|x|
-    ///         x.trim()
-    ///         .parse()
-    ///         .ok(), ||println!("Please enter a posive whole number:"));
+    ///     .take_string_input_until_mapped(
+    ///         |x|x.trim()
+    ///             .parse()
+    ///             .ok(), 
+    ///         ||println!("Please enter a posive whole number:")
+    /// );
     /// 
     /// println!("User input: {}", uinp);
     /// ```
@@ -143,7 +146,8 @@ pub trait TakeInputBasic<T> {
     /// let a = io::stdin().take_lines_input(
     ///     |x, _|println!("Please input between 3 and 10 lines.\n{} number remaining.", 3 - x);,
     ///     |err, x, _|{println!("input error: {}", err); x >= 3}, 
-    ///     3..10);
+    ///     3..10
+    /// );
     /// assert!(a.lines().count() > 2);
     /// ```
     fn take_lines_input<U: RangeBounds<usize>, F, EF>(&self, notif: F, err_notif: EF, bounds: U) -> String
@@ -197,7 +201,8 @@ pub trait TakeInputBasic<T> {
     ///     |x, _|println!("Please input between 3 and 10 numbers.\n{} numbers remaining.", 3 - x);,
     ///     |err, x, _|{println!("input error: {}", err); x >= 3}, 
     ///     |(_, x)|x.trim().parse::<isize>(),
-    ///     3..10);
+    ///     3..10
+    /// );
     /// assert!(a.count() > 2);
     /// ```
     fn take_lines_input_then_map<E, U: RangeBounds<usize>, F, G, EF>(&self, notif: G, err_notif: EF, f: F, bounds: U) -> Map<Enumerate<vec::IntoIter<String>>, F>
@@ -324,7 +329,10 @@ where
         /// use std::io;
         /// use my_rusttools::input::TakeInputParse;
         /// 
-        /// let uinp: usize = io::stdin().take_input_until_parsed(||println!("Please enter a positive whole number:"), |err|println!("invalid input: {}", err)));
+        /// let uinp: usize = io::stdin().take_input_until_parsed(
+        ///     ||println!("Please enter a positive whole number:"),
+        ///     |err|println!("invalid input: {}", err)
+        /// );
         /// 
         /// println!("User input: {}", uinp);
         /// ```
@@ -376,7 +384,11 @@ where
         /// use std::io;
         /// use my_rusttools::input::TakeInputParse;
         /// 
-        /// let proceed: bool = io::stdin().take_input_until_parsed_and_valid(|x|x, ||println!("Enter 'true'."), |err|println!("invalid input: {}", err));
+        /// let proceed: bool = io::stdin().take_input_until_parsed_and_valid(
+        ///     |x|x,
+        ///     ||println!("Enter 'true'."),
+        ///     |err|println!("invalid input: {}", err)
+        /// );
         /// 
         /// assert!(proceed);
         /// ```
