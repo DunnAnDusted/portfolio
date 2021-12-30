@@ -6,27 +6,23 @@ use std::io;
 #[ignore]
 fn until_parsed_test() {     
     let num: usize = io::stdin()
-        .take_int_until_parsed(||println!("Please enter a positive number:"), |err|println!("invalid input: {}", err));
+        .take_input_until_parsed(
+            ||println!("Please enter a positive number:"),
+            |err|println!("invalid input: {}", err)
+        );
      
     assert!(num >= 0);
 }
 
 #[test]
 #[ignore]
-fn range_test() {
-    println!("Please enter a number greater than 10:");
-         
-    match io::stdin().take_int_include_range(&(..=10)) {
-        Ok(num) => println!("entered numer: {}", num),
-        Err(err) => println!("error: {}", err),
-    }
-}
-
-#[test]
-#[ignore]
 fn until_valid_include_test() {     
     let num: usize = io::stdin()
-        .take_int_include_range_until_valid(&(..=100), ||println!("Please enter a positive number up to 100:"), |err|println!("invalid input: {}", err));
+        .take_input_until_parsed_and_validated(
+            |x|(..=100).contains::<usize>(&x),
+            ||println!("Please enter a positive number up to 100:"),
+            |err|println!("invalid input: {}", err)
+        );
      
     assert!(num <= 100);
 }
@@ -35,7 +31,11 @@ fn until_valid_include_test() {
 #[ignore]
 fn until_valid_exclude_test() {     
     let num: usize = io::stdin()
-        .take_int_exclude_range_until_valid(&(..=10), ||println!("Please enter a number greater than 10:"), |err|println!("invalid input: {}", err));
+        .take_input_until_parsed_and_validated(
+            |x|!(..=10).contains::<usize>(&x),
+            ||println!("Please enter a number greater than 10:"),
+            |err|println!("invalid input: {}", err)
+        );
      
     assert!(num > 10);
 }
@@ -44,7 +44,31 @@ fn until_valid_exclude_test() {
 #[ignore]
 fn float_until_parsed_test() {
     let num: f64 = io::stdin()
-        .take_float_until_parsed(||println!("Please enter a positive number:"), |err|println!("invalid input: {}", err));
+        .take_input_until_parsed(
+            ||println!("Please enter a positive number:"),
+            |err|println!("invalid input: {}", err)
+        );
  
     assert!(num >= f64::MIN);   
+}
+
+#[test]
+#[ignore]
+fn yes_no() {
+    assert!([true, false].contains(&io::stdin()
+        .take_input_until_mapped(
+            |mut x| {
+                x.make_ascii_lowercase();
+                let trimmed = x.trim();
+
+                if ["yes", "y"].contains(&trimmed) {
+                    Some(true)
+                } else if ["no", "n"].contains(&trimmed) {
+                    Some(false)
+                } else {
+                    None
+                }
+            },
+            ||println!("Please enter 'y(es)' or 'n(o)':"))
+        ));
 }
