@@ -1,3 +1,5 @@
+mod pool;
+
 use std::{
     net,
     io::prelude::*,
@@ -18,9 +20,12 @@ const OK: &str = "200 OK";
 const ERROR_404: &str = "404 NOT FOUND";
 
 pub fn run(listener: net::TcpListener) {
+    let pool = pool::ThreadPool::new(4)
+        .unwrap();
+
     listener.incoming()
         .filter_map(Result::ok)
-        .for_each(handle_connection)
+        .for_each(|x|pool.execute(||handle_connection(x)))
 }
 
 fn handle_connection(mut stream: net::TcpStream) {
