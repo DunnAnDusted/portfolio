@@ -1,4 +1,5 @@
 use std::{
+    ops,
     fmt, 
     thread, 
     sync::{
@@ -8,11 +9,11 @@ use std::{
     }
 };
 
-type Job = Box<dyn FnOnce() + Send + 'static>;
+type Message = ops::ControlFlow<(), Box<dyn FnOnce() + Send + 'static>>;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    pipeline: mpsc::Sender<Job>
+    pipeline: mpsc::Sender<Message>
 }
 
 impl ThreadPool {
@@ -51,33 +52,51 @@ impl ThreadPool {
         F: FnOnce(),
         F: Send + 'static, {
             self.pipeline
-                .send(Box::new(f))
+                .send(Message::Continue(Box::new(f)))
                 .unwrap()
         }
 }
 
-struct Worker {
-    thread: thread::JoinHandle<()>,
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        println!("Sending shutdown messages.");
+
+        for _ in &self.workers {
+            self.pipeline
+                .send(Message::Break(()))
+                .unwrap()
+        }
+
+        self.workers
+            .iter_mut()
+            .filter_map(|x|x.0.take())
+            .for_each(|x|x.join().unwrap());
+    }
 }
 
+struct Worker(Option<thread::JoinHandle<()>>);
+
 impl Worker {
-    fn new(id: usize, inbox: Arc<Mutex<Receiver<Job>>>) -> Self {
-        let thread = thread::spawn(move || {
-            loop {    
-                let job = inbox.lock()
-                    .unwrap()
-                    .recv()
-                    .unwrap();
+    fn new(id: usize, inbox: Arc<Mutex<Receiver<Message>>>) -> Self {
+        let thread = thread::spawn(move || loop {    
+            let message = inbox.lock()
+                .unwrap()
+                .recv()
+                .unwrap();
 
-                println!("Worker {} now working on a job.", id);
-
-                job();
+            match message {
+                Message::Continue(job) => {
+                    println!("Worker {} now working on a job.", id);
+                    job();
+                },
+                Message::Break(_) => {
+                    println!("Shutting down worker {}.", id);
+                    break;
+                }
             }
         });
 
-        Self {
-           thread: thread
-       }
+        Self(Some(thread))
     }
 }
 
