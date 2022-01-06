@@ -3,7 +3,11 @@ use std::{
     fmt, 
     thread, 
     sync::{
-        mpsc::{self, Receiver}, 
+        mpsc::{
+            self, 
+            Sender, 
+            Receiver
+        }, 
         Mutex, 
         Arc
     }
@@ -13,7 +17,7 @@ type Message = ops::ControlFlow<(), Box<dyn FnOnce() + Send + 'static>>;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    pipeline: mpsc::Sender<Message>
+    pipeline: Sender<Message>
 }
 
 impl ThreadPool {
@@ -32,9 +36,8 @@ impl ThreadPool {
                 let rx = Arc::new(Mutex::new(rx));
 
                 let mut workers = Vec::with_capacity(threads);
-                for i in 0..threads {
-                    workers.push(Worker::new(i, Arc::clone(&rx)));
-                }
+                (0..threads)
+                    .for_each(|i|workers.push(Worker::new(i, Arc::clone(&rx))));
 
                 Ok(Self {
                     workers: workers,
