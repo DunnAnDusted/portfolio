@@ -5,8 +5,8 @@ use std::ops::RangeBounds;
 /// 
 /// # Examples
 /// ```
-/// use my_rusttools::factories::sieve_primes;
-/// 
+/// # use my_rusttools::factories::sieve_primes;
+/// #
 /// let mut primes = sieve_primes(10);
 /// 
 /// assert!(primes.eq(vec![2, 3, 5, 7]));
@@ -36,8 +36,8 @@ pub fn sieve_primes(upper_bound: usize) -> impl Iterator<Item = usize> {
 /// 
 /// # Examples
 /// ```
-/// use my_rusttools::factories::range_with_step;
-/// 
+/// # use my_rusttools::factories::range_with_step;
+/// #
 /// let range = range_with_step(0..=10, 2);
 /// let nums = vec![0, 2, 4, 6, 8, 10];
 ///
@@ -49,3 +49,34 @@ where
     U: RangeBounds<T> + Iterator {
         range.step_by(step)
     }
+
+/// Creates an iterator which returns
+/// the fizzbuzz sequence.
+/// 
+/// # Examples
+/// ```
+/// # use my_rusttools::factories::fizzbuzz;
+/// #
+/// assert_eq!(Some("FizzBuzz".to_string()), fizzbuzz().nth(14));
+/// ```
+pub fn fizzbuzz() -> impl Iterator<Item = String> {
+    // Sets up cycling iterators, with `Fizz` and `Buzz` values at the correct intervals,
+    // then zips them into a single iterator.
+    let fizzy = ["", "", "Fizz"].into_iter().cycle();
+    let buzzy = ["", "", "", "", "Buzz"].into_iter().cycle();
+    let fizzbuzz = fizzy.zip(buzzy);
+
+    // Zips the cycling sequence into a `Range`, indicating the current iteration,
+    // appending and returning the values from the cycled sequence
+    // or returning the current index if values were empty.
+    (1..=usize::MAX).zip(fizzbuzz)
+        .map(|(i, (x, y))| {
+            let ret = x.to_owned() + y;
+
+            if ret.is_empty() {
+                i.to_string()
+            } else {
+                ret
+            }
+        })
+}
