@@ -2,5 +2,6 @@
 
 members = [
     "my_rusttools",
-    "cli_commands"
+    "cli_commands",
+    "purple_blox",
 ]
