@@ -71,12 +71,10 @@ pub fn fizzbuzz() -> impl Iterator<Item = String> {
     // or returning the current index if values were empty.
     (1..=usize::MAX).zip(fizzbuzz)
         .map(|(i, (x, y))| {
-            let ret = x.to_owned() + y;
-
-            if ret.is_empty() {
+            if x == y {
                 i.to_string()
             } else {
-                ret
+                x.to_owned() + y
             }
         })
 }
