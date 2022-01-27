@@ -53,6 +53,24 @@ where
 /// Creates an iterator which returns
 /// the fizzbuzz sequence.
 /// 
+/// # Overflow Behaviour
+/// 
+/// The function does not guard against overflows,
+/// overflow in the [`Iterator`] implementation (when the contained
+/// data type reaches its numerical limit) is allowed to panic, wrap, or
+/// saturate. This behavior is defined by the implementation of the [`Step`]
+/// trait. For primitive integers, this follows the normal rules, and respects
+/// the overflow checks profile (panic in debug, wrap in release),
+/// so iterating more than [`usize::MAX`] elements,
+/// either produces the wrong result, or panics.
+/// If debug assertions are enabled, a panic is guaranteed.
+/// 
+/// Note also that overflow happens earlier than you might assume: the overflow happens
+/// in the call to `next` that yields the maximum value, as the range must be
+/// set to a state to yield the next value.
+/// 
+/// [`Step`]: std::iter::Step
+/// 
 /// # Examples
 /// ```
 /// # use my_rusttools::factories::fizzbuzz;
@@ -69,12 +87,12 @@ pub fn fizzbuzz() -> impl Iterator<Item = String> {
     // Zips the cycling sequence into a `Range`, indicating the current iteration,
     // appending and returning the values from the cycled sequence
     // or returning the current index if values were empty.
-    (1..=usize::MAX).zip(fizzbuzz)
-        .map(|(i, (x, y))| {
+    (1usize..).zip(fizzbuzz)
+        .map(|(i, (x, y))|
             if x == y {
                 i.to_string()
             } else {
                 x.to_owned() + y
             }
-        })
+        )
 }

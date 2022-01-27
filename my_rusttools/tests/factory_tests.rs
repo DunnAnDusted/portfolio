@@ -40,3 +40,10 @@ fn ref_test() {
         _ => None
     });
 }
+
+#[test]
+#[should_panic]
+#[ignore = "really long process times, attemping usize overflow"]
+fn fizzbuzz_is_infinite() {
+    fizzbuzz().skip(usize::MAX).for_each(|x|println!("{}", x));
+}
