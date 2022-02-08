@@ -1,6 +1,6 @@
 #![allow(unused_comparisons)]
 use std::ops::ControlFlow;
-use my_rusttools::input::*;
+use my_rusttools::StdinExtended;
 
 #[test]
 #[ignore = "input testing"]

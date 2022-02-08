@@ -3,7 +3,7 @@ use std::{
     process
 };
 use rand::Rng;
-use my_rusttools::input::StdinExtended;
+use my_rusttools::StdinExtended;
 
 fn main() {
     let secret: u8 = rand::thread_rng().gen_range(1..=100);
