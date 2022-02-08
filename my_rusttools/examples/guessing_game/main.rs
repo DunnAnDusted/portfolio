@@ -1,21 +1,31 @@
 use std::{
     cmp::Ordering,
-    io,
+    process
 };
 use rand::Rng;
-use my_rusttools::input::TakeInputParse;
+use my_rusttools::input::StdinExtended;
 
 fn main() {
     let secret: u8 = rand::thread_rng().gen_range(1..=100);
-    let cli_inp = io::stdin();
+    let cli_inp = StdinExtended::new();
     println!("Guess the number!");
 
     loop {
-        let guess: u8 = cli_inp.take_input_until_parsed_and_validated(
-                |x|(1..=100).contains::<u8>(&x),
-                ||println!("Please input a guess from 1 to 100:"),
-                |err|println!("invalid input: {}", err)
-            );
+        let guess: u8 = loop {
+            println!("Please enter a number from 1 to 100,");
+
+            match cli_inp.read_line_new_string()
+                .map_or_else(|err|{
+                    eprintln!("input error: {}", err);
+                    process::exit(1);
+                },
+                |x|x.trim().parse()
+                ) {
+                    Ok(guess) => break guess,
+                    Err(err) => eprintln!("invalid input: {}", err)
+                }
+        };
+
         println!("Your guess: {}", guess);
 
         match guess.cmp(&secret) {
