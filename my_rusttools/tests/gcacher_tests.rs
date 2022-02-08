@@ -1,7 +1,7 @@
 #![allow(unused_assignments, unused_variables)]
 use std::collections::HashMap;
 
-use my_rusttools::GCacher;
+use my_rusttools::gcacher::*;
     
 #[test]
 fn it_works() {
