@@ -451,8 +451,8 @@ where
         /// to instance the cache cleanly.
         fn create(instancer: F, cache: HashMap<K, V, S>) -> GCacher<K, F, V, S> {
             Self {
-                instancer: instancer,
-                cache: cache,
+                instancer,
+                cache,
             }
         }
 
