@@ -1,7 +1,10 @@
 pub mod factories;
-pub mod gcacher;
-pub mod input;
+mod gcacher;
+mod input;
 pub mod traits;
+
+pub use gcacher::GCacher;
+pub use input::StdinExtended;
 
 use unicode_segmentation::UnicodeSegmentation;
 
