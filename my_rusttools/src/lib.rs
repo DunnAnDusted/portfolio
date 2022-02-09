@@ -64,6 +64,13 @@ pub fn pigify(convert: &str) -> String {
 /// #
 /// assert!(is_palindrome("Wow"));
 /// ```
+/// 
+/// Non-Palindrome:
+/// ```
+/// # use my_rusttools::is_palindrome;
+/// #
+/// assert!(!is_palindrome("Rust"));
+/// ```
 pub fn is_palindrome(check: &str) -> bool {
     check.chars()
         .map(|x|x.to_lowercase())
