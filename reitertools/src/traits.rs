@@ -37,11 +37,7 @@ pub trait ReItertools: Iterator {
     }
 
     /// Counts the number of times a unique elements
-    /// is taken from the iterator.
-    /// 
-    /// Takes each elements, incriments their count in a [`HashMap`],
-    /// or inserts unique elements,
-    /// and returns the resulting `HashMap` once exhausted.
+    /// taken from the iterator.
     /// 
     /// # Examples
     /// 
@@ -216,11 +212,9 @@ pub trait ReItertools: Iterator {
     /// 
     /// `palindrome_items()` adapts the iterator, to take elements from each end of the iterator in batches,
     /// eagerly testing for equality between the values in each batch.
-    /// If all of them are equal until a `None` is reached, `palindrome_items()` will return `true`.
-    /// If any of them are not equal, `palindrome_items()` will return `false`.
     /// 
-    /// `palindrome_items()` is short-circuiting, and will halt once a pair is not equal,
-    /// or the value from one end of the iterator, is exhausted.
+    /// `palindrome_items()` is short-circuiting, and will not consume the iterator further
+    /// if a pair of values are not equal.
     /// 
     /// An empty iterator returns `true`.
     /// 
@@ -233,6 +227,7 @@ pub trait ReItertools: Iterator {
     /// let a = [1, 0, 1].into_iter();
     /// 
     /// assert!(a.palindrome_items());
+    /// asser_eq!(a.next(), None);
     /// ```
     /// 
     /// Non-Palindrome iterator:
@@ -242,6 +237,7 @@ pub trait ReItertools: Iterator {
     /// let a = [1, 2, 3].into_iter();
     /// 
     /// assert!(!a.palindrome_iterator());
+    /// assert_eq!(a.next(), Some(2));
     /// ```
     fn palidrome_items(&mut self) -> bool where
     Self: DoubleEndedIterator + Sized,
