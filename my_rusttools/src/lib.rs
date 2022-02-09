@@ -7,6 +7,7 @@ pub use gcacher::GCacher;
 pub use input::StdinExtended;
 
 use unicode_segmentation::UnicodeSegmentation;
+use reitertools::ReItertools;
 
 /// Roughly translates the provided string
 /// into Pig Latin!
@@ -41,4 +42,31 @@ pub fn pigify(convert: &str) -> String {
     }
 
     ret
+}
+
+/// Tests whether a string is a palindrome.
+/// 
+/// `is_palindrome()` normalises the case of the string,
+/// meaning strings with equivilent characters of the differing cases,
+/// will register as a palindrome.
+/// 
+/// If all characters are equal until a `None` is reached, `is_palindrome()` will return `true`.
+/// If the string is empty, `is_palindrome()` will return `true`.
+/// If any characters not equal, `is_palindrome()` will return `false`.
+/// 
+/// `is_palindrome()` is short-circuiting, and will halt upon matching one of the above conditions.
+/// 
+/// # Examples
+/// 
+/// Palindrome:
+/// ```
+/// # use my_rusttools::is_palindrome;
+/// #
+/// assert!(is_palindrome("Wow"));
+/// ```
+pub fn is_palindrome(check: &str) -> bool {
+    check.chars()
+        .map(|x|x.to_lowercase())
+        .next_with(|iter|Some((iter.next()?, iter.next_back()?)))
+        .all(|(x, y)|x.eq(y))
 }

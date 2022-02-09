@@ -53,6 +53,7 @@ name = "my_rusttools"
 version = "0.1.0"
 dependencies = [
  "rand",
+ "reitertools",
  "unicode-segmentation",
 ]
 
