@@ -46,30 +46,18 @@ pub fn pigify(convert: &str) -> String {
 
 /// Tests whether a string is a palindrome.
 /// 
+/// If the string is empty, `is_palindrome()` will return `true`.
+/// 
 /// `is_palindrome()` normalises the case of the string,
 /// meaning strings with equivilent characters of the differing cases,
 /// will register as a palindrome.
 /// 
-/// If all characters are equal until a `None` is reached, `is_palindrome()` will return `true`.
-/// If the string is empty, `is_palindrome()` will return `true`.
-/// If any characters not equal, `is_palindrome()` will return `false`.
-/// 
-/// `is_palindrome()` is short-circuiting, and will halt upon matching one of the above conditions.
-/// 
 /// # Examples
-/// 
-/// Palindrome:
 /// ```
 /// # use my_rusttools::is_palindrome;
 /// #
 /// assert!(is_palindrome("Wow"));
-/// ```
-/// 
-/// Non-Palindrome:
-/// ```
-/// # use my_rusttools::is_palindrome;
-/// #
-/// assert!(!is_palindrome("Rust"));
+/// assert!(!is_palindrome("Wow, Rust!"));
 /// ```
 pub fn is_palindrome(check: &str) -> bool {
     check.chars()
