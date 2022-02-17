@@ -12,19 +12,23 @@ use std::ops::RangeBounds;
 /// assert!(primes.eq(vec![2, 3, 5, 7]));
 /// ```
 pub fn sieve_primes(upper_bound: usize) -> impl Iterator<Item = usize> {
-    let mut ret = vec![true; upper_bound + 1];
-    
-    for i in range_with_step(3..=usize::MAX, 2).take_while(|x|x * x <= upper_bound) {
-        for j in range_with_step(i * i..=upper_bound, i) {
-            ret[j] = false;
-        }
-    }
-
-    ret.into_iter()
-        .enumerate()
-        .skip(2)
-        .filter(|(x, y)|x % 2 != 0 && *y || *x == 2)
-        .map(|x|x.0)
+    // Checks the value of the `upper_bound` parameter.
+    match upper_bound {
+        0 | 1 => Vec::new(), // Checks for the 0 and 1 cases, which cannot contain primes.
+        x => (3usize..).step_by(2) // 2 is a prime, so starts a `RangeFrom` at 3, stepping by each odd value, due to being the only possible primes.
+            .take_while(|i|i * i <= x) // Caps the iterator to the specified upper bound.
+            .fold(vec![true; x + 1],|mut acc, i|{
+                acc.iter_mut()
+                    .skip(i * i) // Skips to the first multiple of the given index (The given index may be a prime number).
+                    .step_by(i) // Steps to each multiple of the index.
+                    .for_each(|x|*x = false); // Consumes the iterator, marking each multiple as not prime.
+                acc // Returns vec of prime markers.
+            }),
+    }.into_iter()
+        .enumerate() // Zips the marker iterator, with an iterator for it's index.
+        .skip(2) // Skips index `0` and `1`.
+        .filter(|(x, y)|*x == 2 || x % 2 != 0 && *y) // Filters the index `2`, as well as unmarked, odd value.
+        .map(|x|x.0) // Discards the boolean marker value.
 }
 
 /// Creates an iterator which returns values
@@ -84,15 +88,13 @@ pub fn fizzbuzz() -> impl Iterator<Item = String> {
     let buzzy = ["", "", "", "", "Buzz"].into_iter().cycle();
     let fizzbuzz = fizzy.zip(buzzy);
 
-    // Zips the cycling sequence into a `Range`, indicating the current iteration,
-    // appending and returning the values from the cycled sequence
-    // or returning the current index if values were empty.
+    // Zips the cycling sequence into a `RangeFrom`,
+    // due to needing to begin indexing at `1`.
     (1usize..).zip(fizzbuzz)
-        .map(|(i, (x, y))|
-            if x == y {
-                i.to_string()
-            } else {
-                x.to_owned() + y
+        .map(|(i, x)|
+            match x {
+                ("", "") => i.to_string(), // Matches for values where the index isn't devisible by `3` or `5`.
+                (x, y) => x.to_owned() + y
             }
         )
 }
