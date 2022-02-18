@@ -7,28 +7,30 @@ use std::ops::RangeBounds;
 /// ```
 /// # use my_rusttools::factories::sieve_primes;
 /// #
-/// let mut primes = sieve_primes(10);
+/// let primes = sieve_primes(10);
 /// 
 /// assert!(primes.eq(vec![2, 3, 5, 7]));
 /// ```
 pub fn sieve_primes(upper_bound: usize) -> impl Iterator<Item = usize> {
-    // Checks the value of the `upper_bound` parameter.
     match upper_bound {
-        0 | 1 => Vec::new(), // Checks for the 0 and 1 cases, which cannot contain primes.
-        x => (3usize..).step_by(2) // 2 is a prime, so starts a `RangeFrom` at 3, stepping by each odd value, due to being the only possible primes.
-            .take_while(|i|i * i <= x) // Caps the iterator to the specified upper bound.
+        0 | 1 => Vec::new(), // Escapes the 0 and 1 cases early.
+        x => (3usize..).step_by(2) // Only steps over odd values, even value inherrantly not being prime.
+            .take_while(|i|i * i <= x)
             .fold(vec![true; x + 1],|mut acc, i|{
                 acc.iter_mut()
-                    .skip(i * i) // Skips to the first multiple of the given index (The given index may be a prime number).
-                    .step_by(i) // Steps to each multiple of the index.
-                    .for_each(|x|*x = false); // Consumes the iterator, marking each multiple as not prime.
-                acc // Returns vec of prime markers.
+                    .skip(i * i) // The given index may be a prime number, so is skipped.
+                    .step_by(i) // Steps through the multiple of the index.
+                    .for_each(|x|*x = false); // Marking each multiple as not prime.
+                acc // Returns `Vec` of prime markers.
             }),
     }.into_iter()
-        .enumerate() // Zips the marker iterator, with an iterator for it's index.
-        .skip(2) // Skips index `0` and `1`.
-        .filter(|(x, y)|*x == 2 || x % 2 != 0 && *y) // Filters the index `2`, as well as unmarked, odd value.
-        .map(|x|x.0) // Discards the boolean marker value.
+        .enumerate()
+        .filter_map(|x|match x {
+            (0 | 1, _) => None, // Discards indexes `0` and `1`, due to being ruled against being primes.
+            (2, _) => Some(2), // Explicitly includes the index `2`, due to being the only even prime.
+            (x, y) if x % 2 != 0 && y => Some(x), // Includes odd numbers which are still marked as primes.
+            _ => None,
+        })
 }
 
 /// Creates an iterator which returns values
