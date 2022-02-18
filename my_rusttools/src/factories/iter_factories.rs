@@ -28,7 +28,8 @@ pub fn sieve_primes(upper_bound: usize) -> impl Iterator<Item = usize> {
         .filter_map(|x|match x {
             (0 | 1, _) => None, // Discards indexes `0` and `1`, due to being ruled against being primes.
             (2, _) => Some(2), // Explicitly includes the index `2`, due to being the only even prime.
-            (x, y) if x % 2 != 0 && y => Some(x), // Includes odd numbers which are still marked as primes.
+            (x, _) if x % 2 == 0 => None,
+            (x, y) if y => Some(x), // Includes indexes which are still marked as primes.
             _ => None,
         })
 }
