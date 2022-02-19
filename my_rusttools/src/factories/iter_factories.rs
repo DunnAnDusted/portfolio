@@ -88,6 +88,7 @@ where
 /// #
 /// assert_eq!(Some("FizzBuzz".to_string()), fizzbuzz().nth(14));
 /// ```
+#[inline]
 pub fn fizzbuzz() -> impl Iterator<Item = String> {
     // Sets up cycling iterators, with `Fizz` and `Buzz` values at the appropriate intervals,
     // zipping them into a single iterator.
@@ -174,4 +175,23 @@ F: FnMut() -> T, {
         .take(interval - 1)
         .chain(iter::once_with(repeat))
         .cycle()
+}
+
+/// Creates an iterator that takes `repeat`, 
+/// repeating the first value of each tuple, for the count of the second.
+/// 
+/// # Examples
+/// 
+/// ```
+/// # use my_rusttools::factories::repeat_values;
+/// #
+/// let foobar_1 = repeat_values(&[("Foo", 2), ("Bar", 3)]);
+/// let foobar_2 = ["Foo", "Foo", "Bar", "Bar", "Bar"];
+/// 
+/// assert!(foobar_1.eq(foobar_2));
+/// ```
+pub fn repeat_values<T: Clone>(repeat: &[(T, usize)]) -> impl Iterator<Item = T> {
+    repeat.to_owned()
+        .into_iter()
+        .flat_map(|(x, y)|iter::repeat(x).take(y))
 }
