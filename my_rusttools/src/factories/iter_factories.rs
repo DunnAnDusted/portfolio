@@ -1,4 +1,7 @@
-use std::ops::RangeBounds;
+use std::{
+    ops::RangeBounds,
+    iter,
+};
 
 /// Creates an iterator which returns all the primes,
 /// less than or equal to `upper_bound`.
@@ -50,6 +53,7 @@ pub fn sieve_primes(upper_bound: usize) -> impl Iterator<Item = usize> {
 ///
 /// assert!(range.eq(nums));
 /// ```
+#[inline]
 pub fn range_with_step<T, U>(range: U, step: usize) -> impl Iterator<Item = U::Item>
 where
     T: ?Sized,
@@ -85,11 +89,9 @@ where
 /// assert_eq!(Some("FizzBuzz".to_string()), fizzbuzz().nth(14));
 /// ```
 pub fn fizzbuzz() -> impl Iterator<Item = String> {
-    // Sets up cycling iterators, with `Fizz` and `Buzz` values at the correct intervals,
-    // then zips them into a single iterator.
-    let fizzy = ["", "", "Fizz"].into_iter().cycle();
-    let buzzy = ["", "", "", "", "Buzz"].into_iter().cycle();
-    let fizzbuzz = fizzy.zip(buzzy);
+    // Sets up cycling iterators, with `Fizz` and `Buzz` values at the appropriate intervals,
+    // zipping them into a single iterator.
+    let fizzbuzz = repeat_interval("Fizz", 3).zip(repeat_interval("Buzz", 5));
 
     // Zips the cycling sequence into a `RangeFrom`,
     // due to needing to begin indexing at `1`.
@@ -100,4 +102,76 @@ pub fn fizzbuzz() -> impl Iterator<Item = String> {
                 (x, y) => x.to_owned() + y
             }
         )
+}
+
+/// Creates an iterator that repeats a default value,
+/// inserting the `repeat` value, every `interval` iterations.
+/// 
+/// # Panics
+/// 
+/// The function does not guard against underflows,
+/// so passing a value of `0` either produces the wrong interval, or panics.
+/// If debug assertions are enabled, a panic is guaranteed.
+/// 
+/// # Examples
+/// 
+/// ```
+/// # use my_rusttools::factories::repeat_interval;
+/// #
+/// let mut fizzy = repeat_interval("Fizz", 3);
+/// 
+/// // First two values are empty string slices.
+/// assert_eq!(fizzy.next(), Some(""));
+/// assert_eq!(fizzy.next(), Some(""));
+/// 
+/// // The third value is now `"Fizz"`.
+/// assert_eq!(fizzy.next(), Some("Fizz"));
+/// 
+/// // The fourth and fifth values are empty string slices again.
+/// assert_eq!(fizzy.next(), Some(""));
+/// assert_eq!(fizzy.next(), Some(""));
+/// ```
+#[inline]
+pub fn repeat_interval<T: Clone + Default>(repeat: T, interval: usize) -> impl Iterator<Item = T> {
+    iter::repeat(Default::default())
+        .take(interval - 1)
+        .chain(iter::once(repeat))
+        .cycle()
+}
+
+/// Creates an iterator that repeats a default value,
+/// inserting the result of the `repeat` closure,
+/// every `interval` iterations.
+/// 
+/// # Panics
+/// 
+/// The function does not guard against underflows,
+/// so passing a value of `0` either produces the wrong interval, or panics.
+/// If debug assertions are enabled, a panic is guaranteed.
+/// 
+/// # Examples
+/// 
+/// ```
+/// # use my_rusttools::factories::repeat_interval_with;
+/// #
+/// let mut fizzy = repeat_interval_with(||String::from("Fizz"), 3);
+/// 
+/// // First two values are empty strings.
+/// assert_eq!(fizzy.next(), Some("".to_owned()));
+/// assert_eq!(fizzy.next(), Some("".to_owned()));
+/// 
+/// // The third value is now `"A"`.
+/// assert_eq!(fizzy.next(), Some("Fizz".to_owned()));
+/// 
+/// // The fourth and fifth values are empty strings again.
+/// assert_eq!(fizzy.next(), Some("".to_owned()));
+/// assert_eq!(fizzy.next(), Some("".to_owned()));
+/// ```
+#[inline]
+pub fn repeat_interval_with<T: Default, F: Clone>(repeat: F, interval: usize) -> impl Iterator<Item = T> where
+F: FnMut() -> T, {
+    iter::repeat_with(Default::default)
+        .take(interval - 1)
+        .chain(iter::once_with(repeat))
+        .cycle()
 }
