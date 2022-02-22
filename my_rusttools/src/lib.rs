@@ -4,7 +4,7 @@ mod input;
 pub mod traits;
 
 pub use gcacher::GCacher;
-pub use input::StdinExtended;
+pub use input::*;
 
 use unicode_segmentation::UnicodeSegmentation;
 
