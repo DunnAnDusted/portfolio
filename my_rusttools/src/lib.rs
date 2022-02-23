@@ -4,7 +4,7 @@ mod input;
 pub mod traits;
 
 pub use gcacher::GCacher;
-pub use input::StdinExtended;
+pub use input::*;
 
 use unicode_segmentation::UnicodeSegmentation;
 use reitertools::ReItertools;
@@ -13,6 +13,7 @@ use reitertools::ReItertools;
 /// into Pig Latin!
 /// 
 /// # Example
+/// 
 /// ```
 /// use my_rusttools::pigify;
 /// 
@@ -20,28 +21,28 @@ use reitertools::ReItertools;
 /// assert_eq!("Example-hay", pigified.as_str());
 /// ```
 pub fn pigify(convert: &str) -> String {
-    const VOWELS: &str = "aAeEiIoOuU";
-    let mut ret: String = String::new();
+    static VOWELS: &str = "aAeEiIoOuU";
 
-    for curr in convert.trim().split_word_bounds() {
-        if curr.contains(char::is_alphabetic) {
-            let mut curr_graphs: unicode_segmentation::Graphemes = curr.graphemes(true);
-            let ay_char: &str = if curr.starts_with(|x| VOWELS.contains(x)) {
-                "h"
-            } 
-            else {
-                curr_graphs.next()
-                    .expect("invalid grapheme length")
+    convert.trim()
+        .split_word_bounds()
+        .fold(String::new(), |acc, x| {
+            // Guard for cases where the item isn't a word.
+            if !x.contains(char::is_alphabetic) {
+                return acc + x;
+            }
+
+            let mut curr_graphs = x.graphemes(true); // Splits the item into it's graphemes.
+            
+            let (header_graph, ay_graph) = match curr_graphs.next() {
+                None => panic!("invalid `&str`: {x}"),
+                Some(x) if x.contains(|y|VOWELS.contains(y)) => (x, "h"), // Checks if the first grapheme contains a vowel.
+                Some(x) => ("", x), // Returns an empty string for the leading value if the item is a consonant.
             };
-            ret.push_str(format!("{}-{}ay", curr_graphs.as_str(), ay_char)
-                .trim_start_matches('-'));
-        }
-        else {
-            ret.push_str(curr);
-        }
-    }
-
-    ret
+            
+            // Reformats the values as a new string, trimming leading cases,
+            // before being appended to the builder string and returning it.
+            acc + format!("{}{}-{}ay", header_graph, curr_graphs.as_str(), ay_graph).trim_start_matches('-')
+        })
 }
 
 /// Tests whether a string is a palindrome.

@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 unicode-segmentation = "1.8.0"
 reitertools = {path = "../reitertools"}
+getset = "0.1.2"
 
 [dev-dependencies]
 rand = "0.8.4"

@@ -1,44 +1,33 @@
 use my_rusttools::factories::*;
-use std::fmt::Write;
 
 #[test]
-fn sieve_test() {
+fn sieve_to_10th() {
     let primes = sieve_primes(10);
 
     assert!(primes.eq(vec![2, 3, 5, 7]));
 }
 
 #[test]
-fn rws_test() {
-    let range = range_with_step(0..=10, 2);
-    let nums = vec![0, 2, 4, 6, 8, 10];
+fn fizzbuzz_indexes() {
+    let first_15 = ["1", "2", "Fizz", "4", "Buzz", "Fizz", "7", "8", "Fizz", "Buzz", "11", "Fizz", "13", "14", "FizzBuzz"]
+        .into_iter()
+        .map(str::to_owned);
 
-    assert!(range.eq(nums));
+    assert!(fizzbuzz().take(15).eq(first_15));
 }
 
 #[test]
-fn rws_type_test() {
-    let range = range_with_step('a'..='z', 2);
-    let chars = vec!['a', 'c', 'e', 'g', 'i', 'k', 'm', 'o', 'q', 's', 'u', 'w', 'y'];
+fn correct_intervals() {
+    let bar = ["", "", "", "", "Bar"]
+        .into_iter()
+        .map(str::to_owned);
 
-    assert!(range.eq(chars));
-}
+    assert!(repeat_interval("Foo", 3).take(3).eq(["", "", "Foo"]));
+    assert!(repeat_interval_with(||String::from("Bar"), 5).take(5).eq(bar));
 
-#[test]
-fn behaviour_test() {
-    let primes = sieve_primes(10);
-
-    assert_eq!("2357".to_string(), primes.fold(String::new(), |mut acc, x|{write!(acc, "{}", x).expect("buffer overflow"); acc}));
-}
-
-#[test]
-fn ref_test() {
-    let mut temp = sieve_primes(10);
-
-    assert_eq!(Some((2, 3)), match (temp.next(), temp.next()) {
-        (Some(x), Some(y)) => Some((x, y)),
-        _ => None
-    });
+    let foobar = repeat_values(&[("A", 3), ("B", 5)]);
+    
+    assert!(foobar.eq(["A", "A", "A", "B", "B", "B", "B", "B"]));
 }
 
 #[test]
