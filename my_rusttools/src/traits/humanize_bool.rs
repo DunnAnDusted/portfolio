@@ -15,7 +15,7 @@ pub trait HumanizeBooleans {
     /// assert_eq!("Yes", true.yes_no());
     /// assert_eq!("No", false.yes_no());
     /// ```
-    fn yes_no<'a>(self) -> &'a str;
+    fn yes_no(self) -> &'static str;
 
     /// Converts a boolean to a
     /// `y` of `n` character.
@@ -39,12 +39,12 @@ pub trait HumanizeBooleans {
     /// assert_eq!("On", true.on_off());
     /// assert_eq!("Off", false.on_off());
     /// ```
-    fn on_off<'a>(self) -> &'a str;
+    fn on_off(self) -> &'static str;
 }
 
 impl HumanizeBooleans for bool {
     #[inline]
-    fn yes_no<'a>(self) -> &'a str {
+    fn yes_no(self) -> &'static str {
         if self {
             "Yes"
         } else {
@@ -62,7 +62,7 @@ impl HumanizeBooleans for bool {
     }
 
     #[inline]
-    fn on_off<'a>(self) -> &'a str {
+    fn on_off(self) -> &'static str {
         if self {
             "On"
         } else {

@@ -1,4 +1,7 @@
-use std::ops::RangeBounds;
+use std::{
+    ops::RangeBounds,
+    iter,
+};
 
 /// Creates an iterator which returns all the primes,
 /// less than or equal to `upper_bound`.
@@ -7,24 +10,31 @@ use std::ops::RangeBounds;
 /// ```
 /// # use my_rusttools::factories::sieve_primes;
 /// #
-/// let mut primes = sieve_primes(10);
+/// let primes = sieve_primes(10);
 /// 
 /// assert!(primes.eq(vec![2, 3, 5, 7]));
 /// ```
 pub fn sieve_primes(upper_bound: usize) -> impl Iterator<Item = usize> {
-    let mut ret = vec![true; upper_bound + 1];
-    
-    for i in range_with_step(3..=usize::MAX, 2).take_while(|x|x * x <= upper_bound) {
-        for j in range_with_step(i * i..=upper_bound, i) {
-            ret[j] = false;
-        }
-    }
-
-    ret.into_iter()
+    match upper_bound {
+        0 | 1 => Vec::new(), // Escapes the 0 and 1 cases early.
+        x => (3usize..).step_by(2) // Only steps over odd values, even value inherrantly not being prime.
+            .take_while(|i|i * i <= x)
+            .fold(vec![true; x + 1],|mut acc, i|{
+                acc.iter_mut()
+                    .skip(i * i) // The given index may be a prime number, so is skipped.
+                    .step_by(i) // Steps through the multiple of the index.
+                    .for_each(|x|*x = false); // Marking each multiple as not prime.
+                acc // Returns `Vec` of prime markers.
+            }),
+    }.into_iter()
         .enumerate()
-        .skip(2)
-        .filter(|(x, y)|x % 2 != 0 && *y || *x == 2)
-        .map(|x|x.0)
+        .filter_map(|x|match x {
+            (0 | 1, _) => None, // Discards indexes `0` and `1`, due to being ruled against being primes.
+            (2, _) => Some(2), // Explicitly includes the index `2`, due to being the only even prime.
+            (x, _) if x % 2 == 0 => None,
+            (x, y) if y => Some(x), // Includes indexes which are still marked as primes.
+            _ => None,
+        })
 }
 
 /// Creates an iterator which returns values
@@ -43,6 +53,7 @@ pub fn sieve_primes(upper_bound: usize) -> impl Iterator<Item = usize> {
 ///
 /// assert!(range.eq(nums));
 /// ```
+#[inline]
 pub fn range_with_step<T, U>(range: U, step: usize) -> impl Iterator<Item = U::Item>
 where
     T: ?Sized,
@@ -77,22 +88,110 @@ where
 /// #
 /// assert_eq!(Some("FizzBuzz".to_string()), fizzbuzz().nth(14));
 /// ```
+#[inline]
 pub fn fizzbuzz() -> impl Iterator<Item = String> {
-    // Sets up cycling iterators, with `Fizz` and `Buzz` values at the correct intervals,
-    // then zips them into a single iterator.
-    let fizzy = ["", "", "Fizz"].into_iter().cycle();
-    let buzzy = ["", "", "", "", "Buzz"].into_iter().cycle();
-    let fizzbuzz = fizzy.zip(buzzy);
+    // Sets up cycling iterators, with `Fizz` and `Buzz` values at the appropriate intervals,
+    // zipping them into a single iterator.
+    let fizzbuzz = repeat_interval("Fizz", 3).zip(repeat_interval("Buzz", 5));
 
-    // Zips the cycling sequence into a `Range`, indicating the current iteration,
-    // appending and returning the values from the cycled sequence
-    // or returning the current index if values were empty.
+    // Zips the cycling sequence into a `RangeFrom`,
+    // due to needing to begin indexing at `1`.
     (1usize..).zip(fizzbuzz)
-        .map(|(i, (x, y))|
-            if x == y {
-                i.to_string()
-            } else {
-                x.to_owned() + y
+        .map(|(i, x)|
+            match x {
+                ("", "") => i.to_string(), // Matches for values where the index isn't devisible by `3` or `5`.
+                (x, y) => x.to_owned() + y
             }
         )
+}
+
+/// Creates an iterator that repeats a default value,
+/// inserting the `repeat` value, every `interval` iterations.
+/// 
+/// # Panics
+/// 
+/// The function does not guard against underflows,
+/// so passing a value of `0` either produces the wrong interval, or panics.
+/// If debug assertions are enabled, a panic is guaranteed.
+/// 
+/// # Examples
+/// 
+/// ```
+/// # use my_rusttools::factories::repeat_interval;
+/// #
+/// let mut fizzy = repeat_interval("Fizz", 3);
+/// 
+/// // First two values are empty string slices.
+/// assert_eq!(fizzy.next(), Some(""));
+/// assert_eq!(fizzy.next(), Some(""));
+/// 
+/// // The third value is now `"Fizz"`.
+/// assert_eq!(fizzy.next(), Some("Fizz"));
+/// 
+/// // The fourth and fifth values are empty string slices again.
+/// assert_eq!(fizzy.next(), Some(""));
+/// assert_eq!(fizzy.next(), Some(""));
+/// ```
+#[inline]
+pub fn repeat_interval<T: Clone + Default>(repeat: T, interval: usize) -> impl Iterator<Item = T> {
+    iter::repeat(Default::default())
+        .take(interval - 1)
+        .chain(iter::once(repeat))
+        .cycle()
+}
+
+/// Creates an iterator that repeats a default value,
+/// inserting the result of the `repeat` closure,
+/// every `interval` iterations.
+/// 
+/// # Panics
+/// 
+/// The function does not guard against underflows,
+/// so passing a value of `0` either produces the wrong interval, or panics.
+/// If debug assertions are enabled, a panic is guaranteed.
+/// 
+/// # Examples
+/// 
+/// ```
+/// # use my_rusttools::factories::repeat_interval_with;
+/// #
+/// let mut fizzy = repeat_interval_with(||String::from("Fizz"), 3);
+/// 
+/// // First two values are empty strings.
+/// assert_eq!(fizzy.next(), Some("".to_owned()));
+/// assert_eq!(fizzy.next(), Some("".to_owned()));
+/// 
+/// // The third value is now `"A"`.
+/// assert_eq!(fizzy.next(), Some("Fizz".to_owned()));
+/// 
+/// // The fourth and fifth values are empty strings again.
+/// assert_eq!(fizzy.next(), Some("".to_owned()));
+/// assert_eq!(fizzy.next(), Some("".to_owned()));
+/// ```
+#[inline]
+pub fn repeat_interval_with<T: Default, F: Clone>(repeat: F, interval: usize) -> impl Iterator<Item = T> where
+F: FnMut() -> T, {
+    iter::repeat_with(Default::default)
+        .take(interval - 1)
+        .chain(iter::once_with(repeat))
+        .cycle()
+}
+
+/// Creates an iterator that takes `repeat`, 
+/// repeating the first value of each tuple, for the count of the second.
+/// 
+/// # Examples
+/// 
+/// ```
+/// # use my_rusttools::factories::repeat_values;
+/// #
+/// let foobar_1 = repeat_values(&[("Foo", 2), ("Bar", 3)]);
+/// let foobar_2 = ["Foo", "Foo", "Bar", "Bar", "Bar"];
+/// 
+/// assert!(foobar_1.eq(foobar_2));
+/// ```
+pub fn repeat_values<T: Clone>(repeat: &[(T, usize)]) -> impl Iterator<Item = T> {
+    repeat.to_owned()
+        .into_iter()
+        .flat_map(|(x, y)|iter::repeat(x).take(y))
 }
