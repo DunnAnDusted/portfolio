@@ -1,29 +1,6 @@
-//! A generic caching struct.
-//! 
 //! This module contains the [`GCacher`] type, a wrapper for [`HashMap`],
 //! designed for storing the result of expensive closures,
 //! retrieving an accurate return of the closure, without recalling it.
-//! 
-//! # Examples
-//! 
-//! The `value_from` method is primary route of addition and access to the caches content,
-//! returning a pure referance to the arguments associated value in the cache,
-//! creating one if it couldn't be found.
-//! 
-//! ```
-//! use my_rusttools::gcacher::GCacher;
-//! 
-//! // Instances the cacher.
-//! let mut squares = GCacher::new(|x: &usize|{
-//!     println!("Closure ran!");
-//!     x * x
-//! });
-//! 
-//! // New values are added, then retried without running the closure again,
-//! // via the `value_from()` method.
-//! assert_eq!(&4, squares.value_from(2));
-//! assert_eq!(&4, squares.value_from(2));
-//! ```
 use std::{
     borrow::Borrow,
     collections::{
@@ -31,28 +8,30 @@ use std::{
         hash_map::{
             RandomState,
             Drain,
-        },
+        }, TryReserveError,
     },
     hash::Hash,
     ops::Deref,
     convert::From,
 };
 
+use getset::Getters;
+
 /// A generic caching struct.
 /// 
 /// Written as a wrapper to an underlying [`HashMap`],
-/// it is designed for storing the result of expensive closures once executed,
-/// as to allow it to be retrieved later, without recalling the closure.
+/// it is designed to store the result of an expensive closures once executed,
+/// allowing it to be retrieved later, without re-execute the closure.
 /// 
 /// # Examples
 /// 
-/// The [`value_from`] method is primary route of addition and access to the caches content,
-/// returning a pure referance to the arguments associated value in the cache,
-/// creating one if it couldn't be found.
+/// The [`value_from`] method is primary route for accessing to the caches content,
+/// returning an immutable referance to the arguments associated value in the cache,
+/// creating one if it didn't exist.
 /// 
 /// ```
-/// use my_rusttools::gcacher::GCacher;
-/// 
+/// # use my_rusttools::GCacher;
+/// #
 /// // Instances the cacher.
 /// let mut squares = GCacher::new(|x: &usize|{
 ///     println!("Closure ran!");
@@ -73,12 +52,12 @@ use std::{
 /// as part of the initialisation, the generic definitions of the struct haven't been defined,
 /// and are instead defined in reverse, derived from the closures parameter and return types.
 /// 
-/// From these types, underlying `HashMap`s key-value pair types and, in turn, 
+/// From these types, the underlying `HashMap`s key-value pair types and, in turn,
 /// the parameter and return types of the [`value_from`] method, are derived.
 /// 
 /// ```
-/// use my_rusttools::gcacher::GCacher;
-/// 
+/// # use my_rusttools::GCacher;
+/// #
 /// // Type inferance is derived from the required type
 /// // annotation on the closure, and its return type,
 /// // rather than typing the variable declaration.
@@ -90,8 +69,8 @@ use std::{
 /// assert_eq!(&4, squares.value_from(2));
 /// ```
 /// ```compile_fail,E0282
-/// use my_rusttools::gcacher::GCacher;
-/// 
+/// # use my_rusttools::GCacher;
+/// #
 /// // Type cannout be infered, without
 /// // annotating the type on the closure.
 /// let squares = GCacher::new(|x|x * x);
@@ -109,9 +88,10 @@ use std::{
 /// 
 /// Otherwise, limited access to constructor and destructor methods are provided through overriding methods,
 /// implemented for `GCacher`, such as [`clear`] and [`drain`], where entries are removed from the cache.
-/// ```
-/// use my_rusttools::gcacher::GCacher;
 /// 
+/// ```
+/// # use my_rusttools::GCacher;
+/// #
 /// // Instances the cacher.
 /// let mut cacher = GCacher::new(|x: &usize|x * x);
 /// 
@@ -138,9 +118,10 @@ use std::{
 /// this does not outright violate the Pledge of Correctness,
 /// though, writing closures dependant exclusively on their parameter,
 /// would be recommended.
-/// ```compile_fail,E0506
-/// use my_rusttools::gcacher::GCacher;
 /// 
+/// ```compile_fail,E0506
+/// # use my_rusttools::GCacher;
+/// #
 /// // Environment variable is initialised and incrimented.
 /// let mut num = 0;
 /// num += 1;
@@ -156,15 +137,21 @@ use std::{
 /// // Cacher is erroneously called again, invalidating prior incriment.
 /// assert_eq!(&3, cacher.value_from(2));
 /// ```
-/// [`value_from`]: Self::value_from
-/// [`clear`]: Self::clear
-/// [`drain`]: Self::drain
-#[derive(Clone)]
+/// 
+/// [`value_from`]: GCacher::value_from
+/// [`clear`]: GCacher::clear
+/// [`drain`]: GCacher::drain
+#[derive(Debug, Clone, Getters)]
+#[getset(get = "pub")]
 pub struct GCacher<K, F, V, S = RandomState> 
 where
     K: Hash + Eq,
     F: Fn(&K) -> V, {
+        /// Returns a referance to the cachers instancing closure.
         pub instancer: F,
+
+        /// Returns a referance to the underlying [`HashMap`],
+        /// which acts as the cachers cache.
         cache: HashMap<K, V, S>,
     }
 
@@ -178,10 +165,13 @@ where
         /// so will not alocate until the first value is cached.
         /// 
         /// # Examples
+        /// 
         /// ```
-        /// use my_rusttools::gcacher::GCacher;
+        /// # use my_rusttools::GCacher;
         /// let mut cacher = GCacher::new(|x: &usize|x * x);
         /// ```
+        #[inline]
+        #[must_use]
         pub fn new(instancer: F) -> GCacher<K, F, V> {
             Self::create(instancer, HashMap::new())
         }
@@ -191,11 +181,14 @@ where
         /// The cache `HashMap` will be able to hold at least `capacity` elements,
         /// without reallocating. If capacity is 0, the hash map will not allocate.
         /// 
-        /// # Example
+        /// # Examples
+        /// 
         /// ```
-        /// use my_rusttools::gcacher::GCacher;
+        /// # use my_rusttools::GCacher;
         /// let mut cacher = GCacher::with_capacity(|x: &usize|x * x, 10);
         /// ```
+        #[inline]
+        #[must_use]
         pub fn with_capacity(instancer: F, capacity: usize) -> GCacher<K, F, V> {
             Self::create(instancer, HashMap::with_capacity(capacity))
         }
@@ -203,13 +196,14 @@ where
         /// Returns a reference to the value corresponding to the key,
         /// instancing a new one, if a key value pairing does not already exist.
         /// 
-        /// The types of `val` and `V` are determined by the parameter,
+        /// The types of `K` and `V` are determined by the parameter,
         /// and return type of the closure passed upon initialisation of the cacher.
         /// 
-        /// # Example
-        /// ```
-        /// use my_rusttools::gcacher::GCacher;
+        /// # Examples
         /// 
+        /// ```
+        /// # use my_rusttools::GCacher;
+        /// #
         /// let mut cacher = GCacher::new(|x: &usize|x * x);
         ///
         /// assert_eq!(&4, cacher.value_from(2));
@@ -220,29 +214,32 @@ where
                 .or_insert_with_key(&self.instancer)          
         }
 
-        /// Clears the cache hash map, removing all key-value pairs.
+        /// Clears the cache, removing all key-value pairs.
         /// Keeps the allocated memory for reuse.
         /// 
-        /// # Example
-        /// ```
-        /// use my_rusttools::gcacher::GCacher;
+        /// # Examples
         /// 
+        /// ```
+        /// # use my_rusttools::GCacher;
+        /// #
         /// let mut cacher = GCacher::new(|x: &usize|x * x);
         /// cacher.value_from(2);
         /// cacher.clear();
         /// assert!(cacher.is_empty());
         /// ```
+        #[inline]
         pub fn clear(&mut self) {
             self.cache.clear();
         }
 
-        /// Clears the cache hash map, returning all the  kay-value pairs as an iterator.
-        /// Keeps the allocated memory for resuse.GCacher
+        /// Clears the cache, returning all the  kay-value pairs as an iterator.
+        /// Keeps the allocated memory for resuse.
         /// 
-        /// # Example
+        /// # Examples
+        /// 
         /// ```
-        /// use my_rusttools::gcacher::GCacher;
-        /// 
+        /// # use my_rusttools::GCacher;
+        /// #
         /// let mut cacher = GCacher::new(|x: &usize|x * x);
         /// cacher.value_from(2);
         /// cacher.value_from(4);
@@ -254,13 +251,13 @@ where
         /// 
         /// assert!(cacher.is_empty());
         /// ```
+        #[inline]
         pub fn drain(&mut self) -> Drain<'_, K, V> {
             self.cache.drain()
         }
 
-        /// Reserves capacity for at least `additional` more elements to be inserted
-        /// in the caches underlying `HashMap`. The collection may reserve more space to avoid
-        /// frequent reallocations.
+        /// Reserves capacity for at least `additional` more elements to be inserted in the cache.
+        /// The cache may reserve more space to avoid frequent reallocations.
         ///
         /// # Panics
         ///
@@ -269,22 +266,45 @@ where
         /// # Examples
         ///
         /// ```
-        /// use my_rusttools::gcacher::GCacher;
+        /// # use my_rusttools::GCacher;
         /// let mut cacher = GCacher::new(|x: &usize|x * x);
         /// cacher.reserve(10);
         /// ```
+        #[inline]
         pub fn reserve(&mut self, additional: usize) {
             self.cache.reserve(additional);
         }
 
-        /// Shrinks the capacity of the caches hash map as much as possible.
+        /// Tries to reverve a capacity for at least `additional` more elements to be inserted in the given cache.
+        /// The collection may reserve more space to avoid frequent reallocations.
+        /// 
+        /// # Errors
+        /// 
+        /// If the capacity overflows, or the allocator reports a failure,
+        /// then an error is returned.
+        /// 
+        /// # Examples
+        /// 
+        /// ```
+        /// # use my_rusttools::GCacher;
+        /// #
+        /// let mut cache = GCacher::new(|x: &usize|x * x);
+        /// cache.try_reserve(10).expect("if 10 bytes can't be reserves, something's not right...");
+        /// ```
+        #[inline]
+        pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+            self.cache.try_reserve(additional)
+        }
+
+        /// Shrinks the capacity of the cache as much as possible.
         /// As much as possible will be dropped, while maintaining the internal rules
         /// and possibly leaving some space in accordance with the resize policy.
         /// 
         /// # Examples
-        /// ```
-        /// use my_rusttools::gcacher::GCacher;
         /// 
+        /// ```
+        /// # use my_rusttools::GCacher;
+        /// #
         /// let mut cacher = GCacher::with_capacity(|x: &usize|x * x, 100);
         /// cacher.value_from(2);
         /// cacher.value_from(4);
@@ -292,20 +312,22 @@ where
         /// cacher.shrink_to_fit();
         /// assert!(cacher.capacity() >= 2);
         /// ```
+        #[inline]
         pub fn shrink_to_fit(&mut self) {
             self.cache.shrink_to_fit();
         }
 
-        /// Shrinks the cacpacity of the caches internal hash map, with a lower limit.
+        /// Shrinks the cacpacity of the caches, with a lower limit.
         /// It will drop no more than the passed lower limit,
         /// while maintaining the internal rules and possibly leaving some space in accordance with the resize policy.
         /// 
         /// If the current capacity is less than the lower limit, this is a no-op.
         /// 
         /// # Examples
-        /// ```
-        /// use my_rusttools::gcacher::GCacher;
         /// 
+        /// ```
+        /// # use my_rusttools::GCacher;
+        /// #
         /// let mut cacher = GCacher::with_capacity(|x: &usize|x * x, 100);
         /// cacher.value_from(2);
         /// cacher.value_from(4);
@@ -315,25 +337,28 @@ where
         /// cacher.shrink_to(0);
         /// assert!(cacher.capacity() >= 2);
         /// ```
+        #[inline]
         pub fn shrink_to(&mut self, min_capacity: usize) {
             self.cache.shrink_to(min_capacity);
         }
 
-        /// Removes a key from the cache's underlying hash map,
+        /// Removes a key from the cache,
         /// returning the associated value when there is one cached.
         /// 
         /// The key may be an borrowed form of the maps key type,
         /// but [`Hash`] and [`Eq`] on the borrowed form *must* match those for the key type.
         /// 
-        /// # Examples
-        /// ```
-        /// use my_rusttools::gcacher::GCacher;
+        /// # Exampless
         /// 
+        /// ```
+        /// # use my_rusttools::GCacher;
+        /// #
         /// let mut cacher = GCacher::new(|x: &usize|x * x);
         /// cacher.value_from(2);
         /// assert_eq!(cacher.remove(&2), Some(4));
         /// assert_eq!(cacher.remove(&2), None);
         /// ```
+        #[inline]
         pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
         where
             K: Borrow<Q>,
@@ -341,21 +366,23 @@ where
                 self.cache.remove(k)
             }
 
-        /// Removes a key from the cache's underlying hash map,
+        /// Removes a key from the cache,
         /// returning the key and associated value when they were cached.
         /// 
         /// The key may be an borrowed form of the maps key type,
         /// but [`Hash`] and [`Eq`] on the borrowed form *must* match those for the key type.
         /// 
         /// # Examples
-        /// ```
-        /// use my_rusttools::gcacher::GCacher;
         /// 
+        /// ```
+        /// # use my_rusttools::GCacher;
+        /// #
         /// let mut cacher = GCacher::new(|x: &usize|x * x);
         /// cacher.value_from(2);
         /// assert_eq!(cacher.remove_entry(&2), Some((2, 4)));
         /// assert_eq!(cacher.remove_entry(&2), None);
         /// ```
+        #[inline]
         pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
         where
             K: Borrow<Q>,
@@ -369,9 +396,10 @@ where
         /// The elements are visited in an unsorted (and unspecified) order.
         /// 
         /// # Examples
-        /// ```
-        /// use my_rusttools::gcacher::GCacher;
         /// 
+        /// ```
+        /// # use my_rusttools::GCacher;
+        /// #
         /// let mut cacher = GCacher::new(|x: &usize|x * x);
         /// cacher.value_from(1);
         /// cacher.value_from(2);
@@ -380,56 +408,59 @@ where
         /// cacher.retain(|&k, _|k % 2 == 0);
         /// assert_eq!(cacher.len(), 2);
         /// ```
+        #[inline]
         pub fn retain<U>(&mut self, f: U)
         where
             U: FnMut(&K, &mut V) -> bool {
                 self.cache.retain(f);
             }
 
-        /// An explicit alias of [`deref`].
-        /// 
-        /// Returns a referance to the structs underlying `HashMap`.
-        /// 
-        /// # Example
-        /// ```
-        /// use my_rusttools::gcacher::GCacher;
-        /// 
-        /// let mut cacher = GCacher::new(|x: &usize|x * x);
-        /// cacher.value_from(2);
-        /// 
-        /// let cache = cacher.cache();
-        /// assert_eq!(Some(&4), cache.get(&2));
-        /// ```
-        /// [`deref`]: Self::deref
-        pub fn cache(&self) -> &HashMap<K, V> {
-            &self.cache
-        }
-
         /// Consumes the cacher,
-        /// returning its internal cache.
+        /// returning its underlying `HashMap`.
         /// 
-        /// # Example
+        /// # Examples
+        /// 
         /// ```
-        /// use my_rusttools::gcacher::GCacher;
-        /// 
+        /// # use my_rusttools::GCacher;
+        /// #
         /// let mut cacher = GCacher::new(|x: &usize|x * x);
         /// cacher.value_from(2);
         /// 
         /// let cache = cacher.into_cache();
         /// assert_eq!(Some(&4), cache.get(&2));
         /// ```
+        #[inline]
         pub fn into_cache(self) -> HashMap<K, V> {
             self.cache
         }
 
-        /// Consumes the cacher,
-        /// returning its inner values,
-        /// as a tuple.
+        /// Consumes the cachers,
+        /// returning its instancing closure.
         /// 
-        /// # Example
+        /// # Examples
+        /// 
         /// ```
-        /// use my_rusttools::gcacher::GCacher;
+        /// # use my_rusttools::GCacher;
+        /// #
+        /// let cache = GCacher::new(|x: &usize|x * x);
         /// 
+        /// let instancer = cache.into_instancer();
+        /// 
+        /// assert_eq!(instancer(&2), 4);
+        /// ```
+        #[inline]
+        pub fn into_instancer(self) -> F {
+            self.instancer
+        }
+
+        /// Consumes the cacher,
+        /// returning its inner values as a tuple.
+        /// 
+        /// # Examples
+        /// 
+        /// ```
+        /// # use my_rusttools::GCacher;
+        /// #
         /// let mut cacher = GCacher::new(|x: &usize|x * x);
         /// cacher.value_from(2);
         /// 
@@ -437,6 +468,7 @@ where
         /// assert_eq!(4, instancer(&2));
         /// assert_eq!(Some(&4), cache.get(&2));
         /// ```
+        #[inline]
         pub fn into_inner(self) -> (F, HashMap<K, V>) {
             (self.instancer, self.cache)
         }
@@ -449,6 +481,8 @@ where
         /// The base, associated function, for instancing new caches.
         /// Allows super-functions to pass down their closure and a `HashMap`,
         /// to instance the cache cleanly.
+        #[inline]
+        #[must_use]
         fn create(instancer: F, cache: HashMap<K, V, S>) -> GCacher<K, F, V, S> {
             Self {
                 instancer,
@@ -461,20 +495,26 @@ where
         /// 
         /// The created map has the default initial capacity.
         /// 
-        /// Warning: `hash_builder` is normally randomly generated, and is designed to allow HashMaps to be resistant to attacks that cause many collisions and very poor performance. Setting it manually using this function can expose a DoS attack vector.
+        /// Warning: `hash_builder` is normally randomly generated,
+        /// and is designed to allow HashMaps to be resistant to attacks that cause many collisions and very poor performance.
+        /// Setting it manually using this function can expose a DoS attack vector.
         ///
         /// The `hash_builder` passed should implement the [`BuildHasher`] trait for the HashMap to be useful, see its documentation for details.
         /// 
-        /// # Example
+        /// # Examples
+        /// 
         /// ```
-        /// use my_rusttools::gcacher::GCacher;
+        /// use my_rusttools::GCacher;
         /// use std::collections::hash_map::RandomState;
         /// 
         /// let s = RandomState::new();
         /// let mut cacher = GCacher::with_hasher(|x: &usize|x * x, s);
         /// cacher.value_from(2);
         /// ```
+        /// 
         /// [`BuildHasher`]: std::hash::BuildHasher
+        #[inline]
+        #[must_use]
         pub fn with_hasher(instancer: F, hash_builder: S) -> GCacher<K, F, V, S> {
             Self::create(instancer, HashMap::with_hasher(hash_builder))
         }
@@ -487,20 +527,26 @@ where
         /// 
         /// The created map has the default initial capacity.
         /// 
-        /// Warning: `hash_builder` is normally randomly generated, and is designed to allow HashMaps to be resistant to attacks that cause many collisions and very poor performance. Setting it manually using this function can expose a DoS attack vector.
+        /// Warning: `hash_builder` is normally randomly generated,
+        /// and is designed to allow HashMaps to be resistant to attacks that cause many collisions and very poor performance.
+        /// Setting it manually using this function can expose a DoS attack vector.
         ///
         /// The `hash_builder` passed should implement the [`BuildHasher`] trait for the HashMap to be useful, see its documentation for details.
         /// 
-        /// # Example
+        /// # Examples
+        /// 
         /// ```
-        /// use my_rusttools::gcacher::GCacher;
+        /// use my_rusttools::GCacher;
         /// use std::collections::hash_map::RandomState;
         /// 
         /// let s = RandomState::new();
         /// let mut cacher = GCacher::with_capacity_and_hasher(|x: &usize|x * x, 10, s);
         /// cacher.value_from(2);
         /// ```
+        /// 
         /// [`BuildHasher`]: std::hash::BuildHasher
+        #[inline]
+        #[must_use]
         pub fn with_capacity_and_hasher(instancer: F, capacity: usize, hash_builder: S) -> GCacher<K, F, V, S> {
             Self::create(instancer, HashMap::with_capacity_and_hasher(capacity, hash_builder))
         }
@@ -512,6 +558,7 @@ where
     F: Fn(&K) -> V {
         type Target = HashMap<K, V>;
 
+        #[inline]
         fn deref(&self) -> &Self::Target {
             &self.cache
         }
@@ -521,8 +568,9 @@ impl<K, F, V> From<GCacher<K, F, V>> for HashMap<K, V>
 where
     K: Eq + Hash,
     F: Fn(&K) -> V {
+        #[inline]
         fn from(unwrap: GCacher<K, F, V>) -> HashMap<K, V> {
-            unwrap.cache
+            unwrap.into_cache()
         }
     }
 
@@ -530,7 +578,8 @@ impl<K, F, V> From<GCacher<K, F, V>> for (F, HashMap<K, V>)
 where
     K: Eq + Hash,
     F: Fn(&K) -> V {
+        #[inline]
         fn from(unwrap: GCacher<K, F, V>) -> (F, HashMap<K, V>) {
-            (unwrap.instancer, unwrap.cache)
+            unwrap.into_inner()
         }
     }

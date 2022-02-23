@@ -11,10 +11,39 @@ struct TestType;
 struct TestType2;
 
 #[test]
-fn it_works() {
+fn count_items_behaviour() {
+    let a = [1, 2, 1, 2, 3, 4];
+    let b: [i32; 0] = [];
+
+    let count_a = a.iter().count_items();
+    assert!(!count_a.is_empty());
+
+    let count_b = b.iter().count_items();
+    assert!(count_b.is_empty());
+}
+
+#[test]
+fn most_common_behaviour() {
     let a = ["One", "Two", "Three", "Three"];
-    let most_common = a.iter().most_common();
-        assert!(most_common.is_some());
+    let b: [&str; 0] = [];
+
+    let most_common_a = a.iter().most_common_count();
+    assert!(matches!(most_common_a, Some((_, 2))));
+
+    let most_common_b = b.iter().most_common_count();
+    assert!(most_common_b.is_none());
+}
+
+#[test]
+fn least_common_behaviour() {
+    let a = ["One", "Two", "Two", "Three", "Three"];
+    let b: [&str; 0] = [];
+
+    let least_common_a = a.iter().least_common_count();
+    assert!(matches!(least_common_a, Some((_, 1))));
+
+    let least_common_b = b.iter().least_common_count();
+    assert!(least_common_b.is_none());
 }
 
 #[test]
