@@ -33,9 +33,9 @@ pub fn pigify(convert: &str) -> String {
             let mut curr_graphs = x.graphemes(true); // Splits the item into it's graphemes.
             
             let (header_graph, ay_graph) = match curr_graphs.next() {
+                None => panic!("invalid `&str`: {x}"),
                 Some(x) if x.contains(|y|VOWELS.contains(y)) => (x, "h"), // Checks if the first grapheme contains a vowel.
                 Some(x) => ("", x), // Returns an empty string for the leading value if the item is a consonant.
-                None => panic!("invalid grapheme"),
             };
 
             // Reformats the values as a new string, trimming leading cases,
