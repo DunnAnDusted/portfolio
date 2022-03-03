@@ -20,7 +20,7 @@ use unicode_segmentation::UnicodeSegmentation;
 /// assert_eq!("Example-hay", pigified.as_str());
 /// ```
 pub fn pigify(convert: &str) -> String {
-    static VOWELS: &str = "aAeEiIoOuU";
+    static VOWELS: &[char] = &['a', 'A', 'e', 'E', 'i', 'I', 'o', 'O', 'u', 'U'];
 
     convert.trim()
         .split_word_bounds()
@@ -32,11 +32,9 @@ pub fn pigify(convert: &str) -> String {
 
             let mut curr_graphs = x.graphemes(true); // Splits the item into it's graphemes.
             
-            let (header_graph, ay_graph) = match curr_graphs.next() {
-                None => panic!("invalid `&str`: {x}"),
-                Some(x) if x.contains(|y|VOWELS.contains(y)) => (x, "h"), // Checks if the first grapheme contains a vowel.
-                Some(x) => ("", x), // Returns an empty string for the leading value if the item is a consonant.
-            };
+            let (header_graph, ay_graph) = curr_graphs.next()
+                .map(|x|if x.contains(VOWELS) {(x, "h")} else {("", x)})
+                .expect(format!("invalid `&str`: {x}").as_str());
 
             // Reformats the values as a new string, trimming leading cases,
             // before being appended to the builder string and returning it.
