@@ -48,7 +48,7 @@ pub type SievePrimes<F> = FilterMap<Enumerate<IntoIter<bool>>, F>;
 /// 
 /// assert_eq!(Some("FizzBuzz".to_string()), fizzbuzz().nth(14));
 /// ```
-pub type FizzBuzz<F, I, J> = Map<Zip<RangeFrom<usize>, Zip<I, J>>, F>;
+pub type FizzBuzz<'a, F> = Map<Zip<RangeFrom<usize>, Zip<RepeatInterval<&'a str>, RepeatInterval<&'a str>>>, F>;
 
 /// A specialised iterator type for cycling a distinct value into a sequence,
 /// at a regular interval.
@@ -136,15 +136,18 @@ pub type RepeatValues<T, F> = FlatMap<IntoIter<(T, usize)>, Take<Repeat<T>>, F>;
 /// ```
 pub fn sieve_primes(upper_bound: usize) -> SievePrimes<impl FnMut((usize, bool)) -> Option<usize>> {
     iter::successors(Some(3usize), |x|x.checked_add(2)) // Only steps over odd values, even value inherrantly not being prime.
-        .take_while(|i|i * i <= upper_bound)
-        .fold(vec![true; upper_bound + 1], |acc, i|{
+        .take_while(|&i|
+            i.checked_pow(2)
+                .map(|i|i <= upper_bound)
+                .unwrap_or_default()
+        ).fold(vec![true; upper_bound.checked_add(1).unwrap_or(upper_bound)], |acc, i|{
             if !acc[i] {
                 return acc; // Guard returns early if for indexes which have already been unmarked as prime.
             }
 
             // Starting with the first multiple of the index, due to the index potentially being prime,
             // it's added to the previous value with each iteration, to get the next.
-            iter::successors(Some(i * i), |x|x.checked_add(i))
+            iter::successors(Some(i.pow(2)), |x|x.checked_add(i))
                 .take_while(|&i|i <= upper_bound) 
                 .fold(acc, |mut acc, y|{
                     acc[y] = false; // Marks the iteration index as not prime.
@@ -169,6 +172,7 @@ pub fn sieve_primes(upper_bound: usize) -> SievePrimes<impl FnMut((usize, bool))
 /// Will panic if the given step is `0`.
 /// 
 /// # Examples
+/// 
 /// ```
 /// # use my_rusttools::factories::range_with_step;
 /// #
@@ -214,7 +218,7 @@ where
 /// assert_eq!(Some("FizzBuzz".to_string()), fizzbuzz().nth(14));
 /// ```
 #[inline]
-pub fn fizzbuzz() -> FizzBuzz<impl FnMut((usize,(&'static str, &'static str))) -> String, impl Iterator<Item = &'static str>, impl Iterator<Item = &'static str>> {
+pub fn fizzbuzz() -> FizzBuzz<'static, impl FnMut((usize,(&'static str, &'static str))) -> String> {
     // Sets up cycling iterators, with `Fizz` and `Buzz` values at the appropriate intervals,
     // zipping them into a single iterator.
     let fizzbuzz = repeat_interval("Fizz", 3).zip(repeat_interval("Buzz", 5));
