@@ -22,7 +22,7 @@ use std::{
 /// 
 /// This typedef is used to give the return of [`sieve_primes`],
 /// a concrete return type, allowing the usage of methods defined on the aliased type,
-/// without needing to list every trait in the method signiture.
+/// without needing to list every trait in the function signiture.
 /// 
 /// # Examples
 /// 
@@ -39,7 +39,7 @@ pub type SievePrimes<F> = FilterMap<Enumerate<IntoIter<bool>>, F>;
 /// 
 /// This typedef is used to give the return of [`fizzbuzz`],
 /// a concrete return type, allowing the usage of methods defined on the aliased type,
-/// without needing to list every trait in the method signiture.
+/// without needing to list every trait in the function signiture.
 /// 
 /// # Examples
 /// 
@@ -55,7 +55,7 @@ pub type FizzBuzz<'a, F> = Map<Zip<RangeFrom<usize>, Zip<RepeatInterval<&'a str>
 /// 
 /// This typedef is used to give the return of [`repeat_interval`],
 /// a concrete return type, allowing the usage of methods defined on the aliased type,
-/// without needing to list every trait in the method signiture.
+/// without needing to list every trait in the function signiture.
 /// 
 /// # Examples
 /// 
@@ -82,7 +82,7 @@ pub type RepeatInterval<T> = Cycle<Chain<Take<Repeat<T>>, Once<T>>>;
 /// 
 /// This typedef is used to give the return of [`repeat_interval_with`],
 /// a concrete return type, allowing the usage of methods defined on the aliased type,
-/// without needing to list every trait in the method signiture.
+/// without needing to list every trait in the function signiture.
 /// 
 /// # Examples
 /// 
@@ -109,7 +109,7 @@ pub type RepeatIntervalWith<D, F> = Cycle<Chain<Take<RepeatWith<D>>, OnceWith<F>
 /// 
 /// This typedef is used to give the return of [`repeat_values`],
 /// a concrete return type, allowing the usage of methods defined on the aliased type,
-/// without needing to list every trait in the method signiture.
+/// without needing to list every trait in the function signiture.
 /// 
 /// # Examples
 /// 
@@ -135,31 +135,46 @@ pub type RepeatValues<T, F> = FlatMap<IntoIter<(T, usize)>, Take<Repeat<T>>, F>;
 /// assert!(primes.eq(vec![2, 3, 5, 7]));
 /// ```
 pub fn sieve_primes(upper_bound: usize) -> SievePrimes<impl FnMut((usize, bool)) -> Option<usize>> {
-    iter::successors(Some(3usize), |x|x.checked_add(2)) // Only steps over odd values, even value inherrantly not being prime.
-        .take_while(|&i|
-            i.checked_pow(2)
-                .map(|i|i <= upper_bound)
-                .unwrap_or_default()
-        ).fold(vec![true; upper_bound.checked_add(1).unwrap_or(upper_bound)], |acc, i|{
-            if !acc[i] {
-                return acc; // Guard returns early if for indexes which have already been unmarked as prime.
-            }
+    let mut primes_markers = vec![true; upper_bound.checked_add(1).unwrap_or(upper_bound)];
+    
+    primes_markers.iter_mut()
+        .take(2)
+        .for_each(|x|*x = false); // Unmarks indexes 0 and 1, which are excluded from the definition of primes.
 
-            // Starting with the first multiple of the index, due to the index potentially being prime,
-            // it's added to the previous value with each iteration, to get the next.
-            iter::successors(Some(i.pow(2)), |x|x.checked_add(i))
-                .take_while(|&i|i <= upper_bound) 
-                .fold(acc, |mut acc, y|{
-                    acc[y] = false; // Marks the iteration index as not prime.
-                    acc
-                })
-        }).into_iter()
+    // 9 is the first index which is a multiple of an odd number, 
+    // meaning bounds any lower, don't need to be processed.
+    if upper_bound > 8 {
+        let validate_multiple_bound = |i: &usize|i <= &upper_bound;
+
+        let next_sucessor = |(i, _): &(usize, _)|{
+            let next = i + 2;
+
+            next.checked_pow(2) // The indexes power will overflow first, meaning the next index can be calculated safely.
+                .filter(&validate_multiple_bound) // Otherwise, it will otherwise exceed the specified upper bound.
+                .map(|x|(next, x))
+        };
+            
+        // Only steps over odd indexes, starting at 3, even values being inherrantly divisible by 2.
+        iter::successors(Some((3, 9)), next_sucessor)
+            .for_each(|(i, x)|
+                // Only needs to process index sequences which aren't marked yet.
+                if primes_markers[i] {
+                    primes_markers.iter_mut()
+                        .skip(x)
+                        .step_by(i)
+                        .for_each(|y|*y = false);
+                }
+            );
+    }
+        
+    primes_markers.into_iter()
         .enumerate()
         .filter_map(|x|match x {
-            (0 | 1, _) => None, // Discards indexes `0` and `1`, due to being ruled against being primes.
-            (2, _) => Some(2), // Explicitly includes the index `2`, due to being the only even prime.
-            (x, _) if x % 2 == 0 => None,
-            (x, y) if y => Some(x), // Includes indexes which are still marked as primes.
+            // Explicitly excluding indexes marked as `false`, excludes the single largest group of indexes, odd or even.
+            // 7*2 == 14, for example...
+            (_, false) => None,
+            (x, _) if x % 2 != 0 => Some(x),
+            (2, _) => Some(2), // Explicitly includes the index `2`, due to being the only even prime number.
             _ => None,
         })
 }
