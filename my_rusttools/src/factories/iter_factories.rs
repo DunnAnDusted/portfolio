@@ -1,5 +1,5 @@
 use std::{
-    ops::{RangeBounds, RangeFrom},
+    ops::RangeBounds,
     iter::{
         self, 
         FilterMap,
@@ -13,7 +13,8 @@ use std::{
         Once,
         RepeatWith,
         OnceWith,
-        FlatMap
+        FlatMap,
+        Successors,
     }, 
     vec::IntoIter,
 };
@@ -48,7 +49,7 @@ pub type SievePrimes<F> = FilterMap<Enumerate<IntoIter<bool>>, F>;
 /// 
 /// assert_eq!(Some("FizzBuzz".to_string()), fizzbuzz().nth(14));
 /// ```
-pub type FizzBuzz<'a, F> = Map<Zip<RangeFrom<usize>, Zip<RepeatInterval<&'a str>, RepeatInterval<&'a str>>>, F>;
+pub type FizzBuzz<'a, F, G> = Map<Zip<Successors<usize, F>, Zip<RepeatInterval<&'a str>, RepeatInterval<&'a str>>>, G>;
 
 /// A specialised iterator type for cycling a distinct value into a sequence,
 /// at a regular interval.
@@ -209,21 +210,9 @@ where
 /// 
 /// # Overflow Behaviour
 /// 
-/// The function does not guard against overflows,
-/// overflow in the [`Iterator`] implementation (when the contained
-/// data type reaches its numerical limit) is allowed to panic, wrap, or
-/// saturate. This behavior is defined by the implementation of the [`Step`]
-/// trait. For primitive integers, this follows the normal rules, and respects
-/// the overflow checks profile (panic in debug, wrap in release),
-/// so iterating more than [`usize::MAX`] elements,
-/// either produces the wrong result, or panics.
-/// If debug assertions are enabled, a panic is guaranteed.
-/// 
-/// Note also that overflow happens earlier than you might assume: the overflow happens
-/// in the call to `next` that yields the maximum value, as the range must be
-/// set to a state to yield the next value.
-/// 
-/// [`Step`]: std::iter::Step
+/// The iterator produced by this function,
+/// utilises checked operations to produce its current index,
+/// and as such, will end when the index for the iterator exceeds [`usize::MAX`].
 /// 
 /// # Examples
 /// 
@@ -233,14 +222,22 @@ where
 /// assert_eq!(Some("FizzBuzz".to_string()), fizzbuzz().nth(14));
 /// ```
 #[inline]
-pub fn fizzbuzz() -> FizzBuzz<'static, impl FnMut((usize,(&'static str, &'static str))) -> String> {
+pub fn fizzbuzz() -> FizzBuzz<'static, impl FnMut(&usize) -> Option<usize>, impl FnMut((usize,(&'static str, &'static str))) -> String> {
+    let fizz = repeat_interval("Fizz", 3);
+    let buzz = repeat_interval("Buzz", 5);
+
     // Sets up cycling iterators, with `Fizz` and `Buzz` values at the appropriate intervals,
     // zipping them into a single iterator.
-    let fizzbuzz = repeat_interval("Fizz", 3).zip(repeat_interval("Buzz", 5));
+    let fizzbuzz = fizz.zip(buzz);
 
-    // Zips the cycling sequence into a `RangeFrom`,
+    // Zips the cycling sequence into a `Successor`,
     // due to needing to begin indexing at `1`.
-    (1usize..).zip(fizzbuzz)
+    //
+    // Used instead of a range, due to unbounded ranges being guaranteed to panic upon overflow,
+    // meaning making it unbounded is redundant,
+    // and bounded ones have additional instructions, which are unnessacary in this context.
+    iter::successors(Some(1_usize), |&i|i.checked_add(1))
+        .zip(fizzbuzz)
         .map(|(i, x)|
             match x {
                 ("", "") => i.to_string(), // Matches for values where the index isn't devisible by `3` or `5`.
