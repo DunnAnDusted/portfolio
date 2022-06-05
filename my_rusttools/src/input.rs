@@ -1,9 +1,10 @@
 //! Custom input handling tools.
 use std::{
-    io::{self, Read},
-    ops::{Bound::*, RangeBounds, Deref, DerefMut, ControlFlow},
+    io::{self, Read, BufRead},
+    ops::{Bound::*, RangeBounds, Deref, DerefMut},
     os::unix::prelude::AsRawFd,
-    str::FromStr, process
+    str::FromStr, 
+    process
 };
 
 /// A newtype wrapper of [`std::io::Stdin`],
@@ -81,6 +82,15 @@ impl StdinExtended {
     /// reading a number of lines within the range specified,
     /// to a new buffer.
     /// 
+    /// # Exit Behaviour
+    /// 
+    /// If the line count has exceeded the lower bound, and the user enters an empty line,
+    /// the method will return the string.
+    /// 
+    /// The user can continue entering lines after this, until the previous condition is met,
+    /// or the specified upper bound is reached,
+    /// after which the method will always return the string.
+    /// 
     /// # Examples
     /// 
     /// ```
@@ -89,62 +99,54 @@ impl StdinExtended {
     /// use std::ops::ControlFlow;
     /// 
     /// fn main() -> io::Result<()> {
-    ///     let uinp = StdinExtended::new();
-    ///     let input = uinp.read_lines(1..=3,
-    ///         |curr|println!("Please enter between 1 and 3 lines.\nCurrent count: {}", curr.lines().count()),
-    ///         |err, curr|{
-    ///             eprintln!("input error: {}\nerror at {}", err, curr);
-    ///             ControlFlow::Break(())
-    ///         }
-    ///     )?;
-    /// 
-    ///     println!("{}", input);
-    ///     Ok(())
+    ///     StdinExtended::new()
+    ///         .read_lines(1..=3, |x|println!("Please enter between 1 and 3 lines.\nCurrent count: {x}"))
+    ///         .map(|x|println!("input:\n\n{x}"))
     /// }
     /// ```
-    pub fn read_lines<U: RangeBounds<usize>, F, EF>(&self, bounds: U, mut notif: F, mut err_notif: EF) -> io::Result<String> where
-    F: FnMut(&str),
-    EF: FnMut(&io::Error, &str) -> ControlFlow<()> {
-        let mut ret = String::new();
-        let mut line_count = 0;
+    pub fn read_lines<U: RangeBounds<usize>, F>(&self, bounds: U, mut notif: F) -> io::Result<String> where
+    F: FnMut(usize), {
+        notif(0); // Runs the initial notification, because it normally only runs as part of the iteration process.
 
-        let start = *match bounds.start_bound() {
-            Included(start) => start,
-            Excluded(start) => start,
-            Unbounded => &0,
-        };
-
-        let end = match bounds.end_bound() {
-            Included(end) => *end,
-            Excluded(end) => end -1,
+        let upper = match bounds.end_bound() {
+            Included(&end) => end,
+            Excluded(&end) => end.checked_sub(1).unwrap_or_default(),
             Unbounded => usize::MAX,
         };
 
-        loop {
-            if line_count >= end || line_count == usize::MAX {
-                break Ok(ret);
-            }
+        self.lock()
+            .lines()
+            // `Scan` struct used to keep track of the number of lines read, propagating the count forward.
+            .scan(0, |lines, io_result|{
+                let deref_io_result = io_result.as_deref()
+                    .map(str::trim);
 
-            notif(ret.as_str());
-
-            if let Err(err) = self.read_line(&mut ret) {
-                if let ControlFlow::Break(()) = err_notif(&err, ret.as_str()) {
-                    break Err(err);
+                match deref_io_result {
+                    Ok(z) if !z.is_empty() => *lines += 1,
+                    _ => (),
                 }
-            }
 
-            let new_line_count = ret.trim().lines().filter(|x|!x.is_empty()).count();
+                match deref_io_result {
+                    Ok("") if bounds.contains(lines) => None,
+                    _ => Some(io_result.map(|y|(*lines, y))),
+                }
+            })
+            .filter_map(|io_result|{
+                match io_result.as_ref() {
+                    Ok((y, _)) if y < &upper => notif(*y),
+                    _ => (),
+                }
 
-            if new_line_count - line_count < 1 && new_line_count.checked_sub(start).is_some() {
-                break Ok(ret);
-            } else {
-                ret = ret.lines()
-                    .filter(|x|!x.is_empty())
-                    .fold(String::new(), |acc, x|acc + x + "\n");
-            }
+                let io_result = io_result.map(|x|x.1);
 
-            line_count = new_line_count;
-        }
+                match io_result.as_deref().map(str::trim) {
+                    Ok("") => None,
+                    _ => Some(io_result),
+                }
+            })
+            .take(upper)
+            .collect::<Result<Vec<_>, _>>()
+            .map(|x|x.join("\n"))
     }
 }
 

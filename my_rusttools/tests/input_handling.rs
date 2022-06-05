@@ -1,5 +1,5 @@
 #![allow(unused_comparisons)]
-use std::ops::{ControlFlow, RangeBounds};
+use std::ops::RangeBounds;
 use my_rusttools::{StdinExtended, ParseStdinExtended};
 
 #[test]
@@ -44,10 +44,9 @@ fn yes_no_map() {
 #[test]
 #[ignore = "input testing"]
 fn lines_test() {
-    let lines = StdinExtended::new().read_lines(1..=3, 
-        |x|println!("Please enter up to 3 values.\nCurrent count: {}", x.lines().count()), 
-        |_, _|ControlFlow::Break(())
-    ).expect("input error")
+    let lines = StdinExtended::new()
+        .read_lines(1..4, |x|println!("Please enter up to 3 values.\nCurrent count: {x}"))
+        .expect("input error")
         .lines()
         .count();
 
