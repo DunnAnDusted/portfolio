@@ -45,28 +45,19 @@ pub trait HumanizeBooleans {
 impl HumanizeBooleans for bool {
     #[inline]
     fn yes_no(self) -> &'static str {
-        if self {
-            "Yes"
-        } else {
-            "No"
-        }
+        self.then_some("Yes")
+            .unwrap_or("No")
     }
 
     #[inline]
     fn yes_no_short(self) -> char {
-        if self {
-            'y'
-        } else {
-            'n'
-        }
+        self.then_some('y')
+            .unwrap_or('n')
     }
 
     #[inline]
     fn on_off(self) -> &'static str {
-        if self {
-            "On"
-        } else {
-            "Off"
-        }
+        self.then_some("On")
+            .unwrap_or("Off")
     }
 }
