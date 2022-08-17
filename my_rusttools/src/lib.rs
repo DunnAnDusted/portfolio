@@ -38,20 +38,21 @@ pub fn pigify(convert: &str) -> String {
             .then(|| {
                 let mut curr_graphs = x.graphemes(true);
 
+                // TODO: `None` varient means something funky happened with the string,
+                // and I'm not sure how I'd deal with that currently,
+                // other than leaving it to panic...
+                let head = curr_graphs.next()
+                    .unwrap_or_else(|| panic!("invalid `&str`: {x}"));
+
                 // Removes the first grapheme from the word,
                 // to be `ay_head` if it doesn't contain a vowel.
-                let (ret, ay_head) = match curr_graphs.next() {
-                    Some(y) if y.contains(VOWELS) => (x, "h"),
-                    Some(y) => (curr_graphs.as_str(), y),
-                    // TODO: `None` varient means something funky happened with the string,
-                    // and I'm not sure how I'd deal with that currently,
-                    // other than leaving it to panic...
-                    None => panic!("invalid `&str`: {x}"),
-                };
+                let (ret, ay_head) = head.contains(VOWELS)
+                    .then_some((head, "h"))
+                    .unwrap_or_else(|| (curr_graphs.as_str(), head));
 
                 let mut ret = ret.to_owned();
 
-                // Preceesing hyphen looks weird,
+                // Preceeding hyphen looks weird,
                 // so should only be pushed if it isn't the first character.
                 if !ret.is_empty() {
                     ret.push('-');
