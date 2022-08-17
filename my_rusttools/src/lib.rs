@@ -8,16 +8,13 @@ pub use input::*;
 
 use unicode_segmentation::UnicodeSegmentation;
 
-/// Roughly translates the provided string
+/// Roughly translates the provided `&str`
 /// into Pig Latin!
 /// 
-/// # Errors
+/// # Panics
 /// 
-/// Will return an `Err` varient, if the expected size of the resulting string exceeds `usize::MAX`.
-/// Note: This calculation is somewhat rough, meaning the actual resulting length may have been less than calculated,
-/// but the process is more to allow pre-allocation of required memory,
-/// rather than handling cases where string capacity would be exceeded.
-/// As such, the error case is more of a formality of handling the calculation results.
+/// May panic if `convert` contains a byte sequence
+/// which would fail to produce a valid grapheme cluster.
 /// 
 /// # Example
 /// 
@@ -25,37 +22,45 @@ use unicode_segmentation::UnicodeSegmentation;
 /// use my_rusttools::pigify;
 /// 
 /// let pigified = pigify("Example");
-/// assert_eq!(Ok("Example-hay".to_string()), pigified);
+/// assert_eq!(pigified, "Example-hay");
 /// ```
-pub fn pigify(convert: &str) -> Result<String, &'static str> {
-    static VOWELS: &[char] = &['a', 'A', 'e', 'E', 'i', 'I', 'o', 'O', 'u', 'U'];
+pub fn pigify(convert: &str) -> String {
+    use std::borrow::Cow;
 
-    // Calculates rough length for the resulting string.
-    let cap = convert.unicode_words()
-        .count()
-        .checked_mul(4)
-        .and_then(|x|x.checked_add(convert.len()))
-        .ok_or("to long to convert")?;
+    const VOWELS: &[char] = &['a', 'A', 'e', 'E', 'i', 'I', 'o', 'O', 'u', 'U'];
 
-    let mut ret = convert.trim()
+    convert.trim()
         .split_word_bounds()
-        .fold(String::with_capacity(cap), |acc, x| {
-            // Guard for cases where the item isn't a word.
-            if !x.contains(char::is_alphabetic) {
-                return acc + x;
-            }
+        // Empty strings make no sense, but could cause errors...
+        .filter(|x| !x.is_empty())
+        // Checks whether an item should be processed (contains Latin characters).
+        .map(|x| x.starts_with(|y| matches!(y, 'a'..='z' | 'A'..='Z'))
+            .then(|| {
+                let mut curr_graphs = x.graphemes(true);
 
-            let mut curr_graphs = x.graphemes(true); // Splits the item into it's graphemes.
-            
-            let (header_graph, ay_graph) = curr_graphs.next()
-                .map(|x|if x.contains(VOWELS) {(x, "h")} else {("", x)})
-                .expect(format!("invalid `&str`: {x}").as_str());
+                // Removes the first grapheme from the word,
+                // to be `ay_head` if it doesn't contain a vowel.
+                let (ret, ay_head) = match curr_graphs.next() {
+                    Some(y) if y.contains(VOWELS) => (x, "h"),
+                    Some(y) => (curr_graphs.as_str(), y),
+                    // TODO: `None` varient means something funky happened with the string,
+                    // and I'm not sure how I'd deal with that currently,
+                    // other than leaving it to panic...
+                    None => panic!("invalid `&str`: {x}"),
+                };
 
-            // Reformats the values as a new string, trimming leading cases,
-            // before being appended to the builder string and returning it.
-            acc + format!("{}{}-{}ay", header_graph, curr_graphs.as_str(), ay_graph).trim_start_matches('-')
-        });
+                let mut ret = ret.to_owned();
 
-        ret.shrink_to_fit();
-        Ok(ret)
+                // Preceesing hyphen looks weird,
+                // so should only be pushed if it isn't the first character.
+                if !ret.is_empty() {
+                    ret.push('-');
+                }
+
+                // Returns a `Cow`, due to only conditionally allocating memory.
+                Cow::Owned(ret + ay_head + "ay")
+            })
+            .unwrap_or_else(|| Cow::Borrowed(x))
+        )
+        .collect()
 }
