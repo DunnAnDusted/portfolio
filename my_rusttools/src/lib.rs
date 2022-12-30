@@ -25,7 +25,7 @@ use unicode_segmentation::UnicodeSegmentation;
 /// assert_eq!(pigified, "Example-hay");
 /// ```
 pub fn pigify(convert: &str) -> String {
-    use std::borrow::Cow;
+    use std::borrow::Cow::*;
 
     const VOWELS: &[char] = &['a', 'A', 'e', 'E', 'i', 'I', 'o', 'O', 'u', 'U'];
 
@@ -59,9 +59,9 @@ pub fn pigify(convert: &str) -> String {
                 }
 
                 // Returns a `Cow`, due to only conditionally allocating memory.
-                Cow::Owned(ret + ay_head + "ay")
+                Owned(ret + ay_head + "ay")
             })
-            .unwrap_or_else(|| Cow::Borrowed(x))
+            .unwrap_or(Borrowed(x))
         )
         .collect()
 }
