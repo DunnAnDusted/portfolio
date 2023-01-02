@@ -27,7 +27,8 @@ use unicode_segmentation::UnicodeSegmentation;
 pub fn pigify(convert: &str) -> String {
     use std::borrow::Cow;
 
-    convert.trim()
+    convert
+        .trim()
         .split_word_bounds()
         // Checks whether an item should be processed (contains Latin characters).
         .map(|x| {
@@ -37,7 +38,8 @@ pub fn pigify(convert: &str) -> String {
 
                     let mut graphemes = x.graphemes(true);
 
-                    let head = graphemes.next()
+                    let head = graphemes
+                        .next()
                         .expect(
                             "this can only be caused due to an empty string, which shouldn't be possible, \
                             because empty strings don't start with *anything*"
@@ -45,7 +47,8 @@ pub fn pigify(convert: &str) -> String {
 
                     // If the first grapheme is a vowel, it should remain the head of the word.
                     // If it's instead a consenant, it should be moved to the back of the string.
-                    let (ret, ay_head) = head.contains(VOWELS)
+                    let (ret, ay_head) = head
+                        .contains(VOWELS)
                         .then_some((head, "h"))
                         .unwrap_or(("", head));
                     let mut ret = ret.to_owned() + graphemes.as_str();
