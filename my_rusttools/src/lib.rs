@@ -40,10 +40,7 @@ pub fn pigify(convert: &str) -> String {
 
                     let head = graphemes
                         .next()
-                        .expect(
-                            "this can only be caused due to an empty string, which shouldn't be possible, \
-                            because empty strings don't start with *anything*"
-                        );
+                        .expect("empty strings shouldn't be possible when pigifying a word");
 
                     // If the first grapheme is a vowel, it should remain the head of the word.
                     // If it's instead a consenant, it should be moved to the back of the string.
